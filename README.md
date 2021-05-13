@@ -1,5 +1,8 @@
 # Imog3n
-[![Build Status](https://cedricguillemet.visualstudio.com/Imog3n/_apis/build/status/CedricGuillemet.Imog3n?branchName=main)](https://cedricguillemet.visualstudio.com/Imog3n/_build/latest?definitionId=3&branchName=main)
+
+MacOs : [![Build Status](https://cedricguillemet.visualstudio.com/Imog3n/_apis/build/status/CedricGuillemet.Imog3n?branchName=main&jobName=macOS)](https://cedricguillemet.visualstudio.com/Imog3n/_build/latest?definitionId=3&branchName=main)
+Linux : [![Build Status](https://cedricguillemet.visualstudio.com/Imog3n/_apis/build/status/CedricGuillemet.Imog3n?branchName=main&jobName=Ubuntu_Clang)](https://cedricguillemet.visualstudio.com/Imog3n/_build/latest?definitionId=3&branchName=main)
+Windows : [![Build Status](https://cedricguillemet.visualstudio.com/Imog3n/_apis/build/status/CedricGuillemet.Imog3n?branchName=main&jobName=win32_x64)](https://cedricguillemet.visualstudio.com/Imog3n/_build/latest?definitionId=3&branchName=main)
 
 ## Build
 
