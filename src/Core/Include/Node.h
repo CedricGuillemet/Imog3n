@@ -4,6 +4,7 @@
 #include <map>
 #include <string>
 #include <utility>
+#include <functional>
 
 namespace Imog3n
 {
@@ -75,7 +76,7 @@ namespace Imog3n
         
         Description* m_description;
         
-        static inline std::map<std::string, Description*> m_descriptions{};
+        static std::map<std::string, Description*> m_descriptions;
         
     };
 
