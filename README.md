@@ -1,4 +1,5 @@
 # Imog3n
+[![Build Status](https://cedricguillemet.visualstudio.com/Imog3n/_apis/build/status/CedricGuillemet.Imog3n?branchName=main)](https://cedricguillemet.visualstudio.com/Imog3n/_build/latest?definitionId=3&branchName=main)
 
 ## Build
 
