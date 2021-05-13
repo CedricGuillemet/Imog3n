@@ -75,3 +75,29 @@ jobs:
       cmake .. -GNinja -DCMAKE_BUILD_TYPE=RelWithDebInfo
       ninja
     displayName: 'Build X11'
+
+- job: Ubuntu_Emscripten
+  timeoutInMinutes: 30
+  pool:
+    vmImage: 'ubuntu-latest'
+
+  steps:
+  - script: |
+      git submodule update --init --recursive
+    displayName: 'Checkout dependencies'
+  - script: |
+      sudo apt-get update
+      sudo apt-get install libgl1-mesa-dev clang-8 libc++-8-dev libc++abi-8-dev ninja-build
+      git clone https://github.com/emscripten-core/emsdk.git
+      cd emsdk
+      emsdk install latest
+    displayName: 'Install packages'
+  - script: |
+      cd emsdk
+      emsdk activate latest
+      cd ..
+      mkdir build
+      cd build
+      emcmake cmake .. -G Ninja -DCMAKE_BUILD_TYPE=Release
+      ninja
+    displayName: 'Build Emscripten'
