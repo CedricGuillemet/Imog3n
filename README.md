@@ -19,7 +19,7 @@ git submodule update --init --recursive
 ```
 mkdir build
 cd build
-cmake ..
+cmake .. -G "Visual Studio 16 2019" -A x64
 ```
 And open .sln with Visual Studio
 
