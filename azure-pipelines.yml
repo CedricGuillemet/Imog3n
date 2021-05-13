@@ -51,7 +51,7 @@ jobs:
 
   - task: MSBuild@1
     inputs:
-      solution: 'build/BabylonNative.sln'
+      solution: 'build/Imog3n.sln'
       maximumCpuCount: true
       configuration: 'RelWithDebInfo'
     displayName: 'Build WIN32_x64'
