@@ -14,7 +14,7 @@
 #include "imgui/imgui.h"
 #include "Node.h"
 
-namespace
+namespace Imog3n
 {
 
 class ExampleCubes : public entry::AppI
@@ -60,6 +60,9 @@ public:
 		m_timeOffset = bx::getHPCounter();
 
 		imguiCreate();
+        
+        Node* node = Node::Create("Circle");
+        printf("input count : %d\n", (int)node->m_description->m_inputs.size());
 	}
 
 	virtual int shutdown() override
@@ -141,7 +144,7 @@ public:
 } // namespace
 
 ENTRY_IMPLEMENT_MAIN(
-	  ExampleCubes
+	  Imog3n::ExampleCubes
 	, "Imogen"
 	, ""
 	, ""
