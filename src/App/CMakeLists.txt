@@ -3,7 +3,7 @@ file(GLOB_RECURSE SRC_FILES
     Source/*.cpp
 )
 
-SET(EXE_NAME "Imogen")
+SET(EXE_NAME "Imog3n")
 
 ADD_EXECUTABLE(${EXE_NAME} ${SRC_FILES})
 
@@ -19,7 +19,6 @@ target_link_libraries(${EXE_NAME} bimg)
 target_link_libraries(${EXE_NAME} bgfx)
 target_link_libraries(${EXE_NAME} example-common)
 
-
 if(MSVC)
     set_target_properties(${EXE_NAME} PROPERTIES LINK_FLAGS_DEBUG "/SUBSYSTEM:WINDOWS")
     set_target_properties(${EXE_NAME} PROPERTIES LINK_FLAGS_RELEASE "/SUBSYSTEM:WINDOWS")
@@ -29,6 +28,12 @@ if(MSVC)
     set(CMAKE_EXE_LINKER_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS} /SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup")
 
     add_definitions(-D_CRT_SECURE_NO_WARNINGS)
+endif()
+
+if (EMSCRIPTEN)
+    set_target_properties(${EXE_NAME} PROPERTIES LINK_FLAGS "-s USE_WEBGL2=1 -s WASM=1 -s FULL_ES3=1 -s ALLOW_MEMORY_GROWTH=1 --shell-file ${CMAKE_CURRENT_SOURCE_DIR}/Source/Imog3n.html")
+    add_definitions(-D_X86_)
+    SET(CMAKE_EXECUTABLE_SUFFIX ".html")
 endif()
 
 add_definitions(-DENTRY_CONFIG_IMPLEMENT_MAIN=1)
