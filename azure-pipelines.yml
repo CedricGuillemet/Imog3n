@@ -1,8 +1,8 @@
 trigger:
-- master
+- main
 
 pr:
-- master
+- main
 
 jobs:
 - job: Ubuntu_Emscripten
@@ -18,13 +18,11 @@ jobs:
       sudo apt-get update
       sudo apt-get install libgl1-mesa-dev clang-8 libc++-8-dev libc++abi-8-dev ninja-build
       git clone https://github.com/emscripten-core/emsdk.git
-      cd emsdk
-      ./emsdk install latest
+      ./emsdk/emsdk install latest
     displayName: 'Install packages'
   - script: |
-      cd emsdk
-      ./emsdk activate latest
-      cd ..
+      ./emsdk/emsdk activate latest
+      source ./emsdk/emsdk_env.sh
       mkdir build
       cd build
       emcmake cmake .. -G Ninja -DCMAKE_BUILD_TYPE=Release
