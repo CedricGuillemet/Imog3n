@@ -12,6 +12,7 @@
 #include "common.h"
 #include "bgfx_utils.h"
 #include "imgui/imgui.h"
+#include "Node.h"
 
 namespace
 {

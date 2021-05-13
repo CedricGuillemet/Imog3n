@@ -1,5 +1,9 @@
 # Prerequisites
 *.d
+build/
+.build/
+bin/Imog3n.*
+bin/Imog3n_d.*
 
 # Compiled Object files
 *.slo
