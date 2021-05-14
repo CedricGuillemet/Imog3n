@@ -39,3 +39,5 @@ if (EMSCRIPTEN)
 endif()
 
 add_definitions(-DENTRY_CONFIG_IMPLEMENT_MAIN=1)
+
+source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${SRC_FILES})
