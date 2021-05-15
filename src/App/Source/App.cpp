@@ -61,8 +61,9 @@ public:
 
 		imguiCreate();
         
-        Node* node = Node::Create("Circle");
-        printf("input count : %d\n", (int)node->m_description->m_inputs.size());
+        //Node* node = Node::Create("Circle");
+        //printf("input count : %d\n", (int)node->m_description->m_inputs.size());
+
 	}
 
 	virtual int shutdown() override

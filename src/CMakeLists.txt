@@ -1,3 +1,4 @@
 add_subdirectory(Core)
 add_subdirectory(Nodes)
 add_subdirectory(App)
+add_subdirectory(Shaders)
