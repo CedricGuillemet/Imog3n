@@ -1,3 +1,0 @@
-[submodule "ext/bgfx.cmake"]
-	path = ext/bgfx.cmake
-	url = https://github.com/CedricGuillemet/bgfx.cmake.git
