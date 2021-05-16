@@ -1,7 +1,3 @@
-if(NOT WIN32)
-    return()
-endif()
-
 file(GLOB SHADER_FILES  Source/*.vs 
                         Source/*.fs
                         Source/*.cs
@@ -44,11 +40,13 @@ function (AddShaders extension type dx11Profile)
     endforeach(SHADER)
 endfunction()
 
-AddShaders("vs" "vertex" "vs_5_0")
-AddShaders("cs" "compute" "ps_5_0")
-AddShaders("fs" "fragment" "ps_5_0")
+if(WIN32)
+    AddShaders("vs" "vertex" "vs_5_0")
+    AddShaders("cs" "compute" "ps_5_0")
+    AddShaders("fs" "fragment" "ps_5_0")
+    FILE(APPEND ${shaders_cpp_file} "BGFX_EMBEDDED_SHADER_END()\n};\n")
+endif()
 
-FILE(APPEND ${shaders_cpp_file} "BGFX_EMBEDDED_SHADER_END()\n};\n")
 add_library(Shaders ${SHADER_FILES} ${shaders_inc_file} ${shaders_cpp_file} ${SHADER_OUTPUT_FILES})
 target_link_libraries(Shaders bgfx bx)
 source_group( "Shader Files" FILES ${SHADER_FILES})
