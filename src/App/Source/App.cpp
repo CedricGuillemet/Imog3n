@@ -122,7 +122,7 @@ public:
 		// Create program from shaders.
 		m_program = loadProgram("Node_vs", "Circle_fs");
 
-		printf("%p\n", embeddedNodeShaders);
+		printf("%p\n", GetEmbeddedShaders());
 
 	}
 
