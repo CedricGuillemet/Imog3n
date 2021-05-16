@@ -1,5 +1,7 @@
 #pragma once
 
-#include <bgfx/embedded_shader.h>
+#include <bgfx/bgfx.h>
 
-extern const bgfx::EmbeddedShader* GetEmbeddedShaders();
+namespace Imog3n {
+    bgfx::ProgramHandle LoadProgram(const char* vertexShaderName, const char* fragmentShaderName);
+}
