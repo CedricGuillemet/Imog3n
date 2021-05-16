@@ -2,4 +2,4 @@
 
 #include <bgfx/embedded_shader.h>
 
-const bgfx::EmbeddedShader* GetEmbeddedShaders();
+extern const bgfx::EmbeddedShader* GetEmbeddedShaders();
