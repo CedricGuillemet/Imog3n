@@ -8,7 +8,7 @@ uniform vec4 u_uvTransform;
 
 void main()
 {
-	if (u_target.y > 0.5)
+	/*if (u_target.y > 0.5)
     {
 		mat4 mvp = u_worldViewProjection;
 		mvp[0] *= u_uvTransform.x * 0.5;
@@ -23,9 +23,13 @@ void main()
 		vec2 trPos = a_position.xy * u_uvTransform.xy + u_uvTransform.zw;
 		gl_Position = vec4(trPos.xy, 0.5, 1.0); 
 	}
-	
+	*/
+	gl_Position = vec4(a_position.xy, 0.5, 1.0); 
+
+	/*
 	v_texcoord0 = a_texcoord0;
 	v_color0 = a_color0;
 	v_normal = mul(u_world, vec4(a_normal, 0.0)).xyz;
 	v_positionWorld = mul(u_world, vec4(a_position, 1.0)).xyz;
+	*/
 }

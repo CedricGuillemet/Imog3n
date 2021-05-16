@@ -13,9 +13,47 @@
 #include "bgfx_utils.h"
 #include "imgui/imgui.h"
 #include "Node.h"
+#include "Shaders.h"
 
 namespace Imog3n
 {
+
+
+
+
+	struct PosColorVertex
+	{
+		float m_x;
+		float m_y;
+		float m_z;
+
+		static void init()
+		{
+			ms_layout
+				.begin()
+				.add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
+				.end();
+		};
+
+		static bgfx::VertexLayout ms_layout;
+	};
+
+	bgfx::VertexLayout PosColorVertex::ms_layout;
+
+	static PosColorVertex s_cubeVertices[] =
+	{
+		{-1.0f,  1.0f,  1.0f },
+		{ 1.0f,  1.0f,  1.0f },
+		{-1.0f, -1.0f,  1.0f },
+		{ 1.0f, -1.0f,  1.0f },
+	};
+
+	static const uint16_t s_cubeTriList[] =
+	{
+		0, 1, 2, // 0
+		1, 3, 2,
+	};
+
 
 class ExampleCubes : public entry::AppI
 {
@@ -63,6 +101,26 @@ public:
         
         //Node* node = Node::Create("Circle");
         //printf("input count : %d\n", (int)node->m_description->m_inputs.size());
+
+
+		// Create vertex stream declaration.
+		PosColorVertex::init();
+
+		// Create static vertex buffer.
+		m_vbh = bgfx::createVertexBuffer(
+			// Static data can be passed with bgfx::makeRef
+			bgfx::makeRef(s_cubeVertices, sizeof(s_cubeVertices))
+			, PosColorVertex::ms_layout
+		);
+
+		// Create static index buffer for triangle list rendering.
+		m_ibh = bgfx::createIndexBuffer(
+			// Static data can be passed with bgfx::makeRef
+			bgfx::makeRef(s_cubeTriList, sizeof(s_cubeTriList))
+		);
+
+		// Create program from shaders.
+		m_program = loadProgram("Node_vs", "Circle_fs");
 
 	}
 
@@ -118,6 +176,33 @@ public:
 			float time = (float)( (bx::getHPCounter()-m_timeOffset)/double(bx::getHPFrequency() ) );
 
             bgfx::touch(0);
+
+
+
+
+			bgfx::IndexBufferHandle ibh = m_ibh;
+			uint64_t state = 0
+				| (m_r ? BGFX_STATE_WRITE_R : 0)
+				| (m_g ? BGFX_STATE_WRITE_G : 0)
+				| (m_b ? BGFX_STATE_WRITE_B : 0)
+				| (m_a ? BGFX_STATE_WRITE_A : 0)
+				| BGFX_STATE_WRITE_Z
+				| BGFX_STATE_DEPTH_TEST_LESS
+				| BGFX_STATE_CULL_CW
+				| BGFX_STATE_MSAA
+				;
+
+			// Set vertex and index buffer.
+			bgfx::setVertexBuffer(0, m_vbh);
+			bgfx::setIndexBuffer(ibh);
+
+			// Set render states.
+			bgfx::setState(state);
+
+			// Submit primitive for rendering to view 0.
+			bgfx::submit(0, m_program);
+
+
 			// Advance to next frame. Rendering thread will be kicked to
 			// process submitted rendering primitives.
 			bgfx::frame();
@@ -140,6 +225,12 @@ public:
 	bool m_g;
 	bool m_b;
 	bool m_a;
+
+
+	bgfx::VertexBufferHandle m_vbh;
+	bgfx::IndexBufferHandle m_ibh;
+	bgfx::ProgramHandle m_program;
+
 };
 
 } // namespace

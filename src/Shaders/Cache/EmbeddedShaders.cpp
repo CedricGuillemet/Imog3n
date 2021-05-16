@@ -1,5 +1,5 @@
 #include "EmbeddedShaders.h"
-static const bgfx::EmbeddedShader s_embeddedShaders[] =
+const bgfx::EmbeddedShader embeddedNodeShaders[] =
 {
 BGFX_EMBEDDED_SHADER(Node_vs),
 BGFX_EMBEDDED_SHADER(Circle_fs),
