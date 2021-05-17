@@ -1,5 +1,5 @@
-#set(BGFX_BUILD_EXAMPLES OFF CACHE BOOL "Build the BGFX examples.")
-#set(BGFX_BUILD_TOOLS OFF CACHE BOOL "Build the BGFX tools.")
+### BGFX
+
 set(BGFX_USE_DEBUG_SUFFIX OFF CACHE BOOL "Add 'd' suffix to debug output targets")
 
 add_subdirectory(bgfx.cmake EXCLUDE_FROM_ALL)
@@ -19,3 +19,29 @@ if (NOT EMSCRIPTEN)
         target_compile_definitions(bgfx PRIVATE BGFX_CONFIG_RENDERER_OPENGL=33)
     endif()
 endif()
+
+### IMGUI
+
+file(GLOB IMGUI_SRC_FILES
+    imgui/*.h
+    imgui/*.cpp
+)
+
+add_library(imgui ${IMGUI_SRC_FILES})
+
+target_include_directories(imgui
+            PUBLIC "imgui"
+            )
+
+### IMGUIZMO
+
+file(GLOB IMGUIZMO_SRC_FILES
+    ImGuizmo/*.h
+    ImGuizmo/*.cpp
+)
+
+add_library(ImGuizmo ${IMGUIZMO_SRC_FILES})
+target_link_libraries(ImGuizmo imgui)
+target_include_directories(ImGuizmo
+            PUBLIC "ImGuizmo"
+            )

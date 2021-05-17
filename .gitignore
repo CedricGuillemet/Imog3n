@@ -1,9 +1,10 @@
 # Prerequisites
 *.d
-build/
-.build/
-bin/Imog3n.*
-bin/Imog3n_d.*
+build/*
+.build/*
+bin/Imog3n*
+bin/.DS_Store
+.DS_Store
 
 # Compiled Object files
 *.slo
