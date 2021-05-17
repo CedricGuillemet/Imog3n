@@ -1,6 +1,9 @@
 file(GLOB SHADER_FILES  Source/*.vs 
                         Source/*.fs
                         Source/*.cs
+                        Source/*.shader
+                        Source/*.sh
+                        Source/*.sc
                         )
 
 set(shaders_output "${CMAKE_CURRENT_SOURCE_DIR}/Cache")
