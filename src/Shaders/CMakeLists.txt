@@ -45,10 +45,10 @@ if(WIN32)
     AddShaders("cs" "compute" "ps_5_0")
     AddShaders("fs" "fragment" "ps_5_0")
 
-    FILE(APPEND ${shaders_cpp_file} "BGFX_EMBEDDED_SHADER_END()\n};\nnamespace Imog3n {\nbgfx::ProgramHandle LoadProgram(const char* vertexShaderName, const char* fragmentShaderName) { return LoadProgram(vertexShaderName, fragmentShaderName); }\n}\n")
+    FILE(APPEND ${shaders_cpp_file} "BGFX_EMBEDDED_SHADER_END()\n};\n#include \"NodeShaderHelper.h\"\n")
 endif()
 
-add_library(Shaders ${SHADER_FILES} ${shaders_inc_file} ${shaders_cpp_file} ${SHADER_OUTPUT_FILES} "Include/Shaders.h")
+add_library(Shaders ${SHADER_FILES} ${shaders_inc_file} ${shaders_cpp_file} ${SHADER_OUTPUT_FILES} "Include/Shaders.h" "Source/NodeShaderHelper.h")
 target_link_libraries(Shaders bgfx bx example-common)
 target_include_directories(Shaders
             PUBLIC "Include"

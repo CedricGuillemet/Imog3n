@@ -17,10 +17,6 @@
 
 namespace Imog3n
 {
-
-
-
-
 	struct PosColorVertex
 	{
 		float m_x;
@@ -55,15 +51,11 @@ namespace Imog3n
 	};
 
 
-class ExampleCubes : public entry::AppI
+class Imog3nApp : public entry::AppI
 {
 public:
-	ExampleCubes(const char* _name, const char* _description, const char* _url)
+	Imog3nApp(const char* _name, const char* _description, const char* _url)
 		: entry::AppI(_name, _description, _url)
-		, m_r(true)
-		, m_g(true)
-		, m_b(true)
-		, m_a(true)
 	{
 	}
 
@@ -99,10 +91,6 @@ public:
 
 		imguiCreate();
         
-        //Node* node = Node::Create("Circle");
-        //printf("input count : %d\n", (int)node->m_description->m_inputs.size());
-
-
 		// Create vertex stream declaration.
 		PosColorVertex::init();
 
@@ -121,9 +109,6 @@ public:
 
 		// Create program from shaders.
 		m_program = LoadProgram("Node_vs", "Circle_fs");
-
-		//printf("%p\n", GetEmbeddedShaders());
-
 	}
 
 	virtual int shutdown() override
@@ -164,11 +149,6 @@ public:
 				, 0
 				);
 
-			ImGui::Checkbox("Write R", &m_r);
-			ImGui::Checkbox("Write G", &m_g);
-			ImGui::Checkbox("Write B", &m_b);
-			ImGui::Checkbox("Write A", &m_a);
-
 			ImGui::Text("Primitive topology:");
 
 			ImGui::End();
@@ -177,33 +157,27 @@ public:
 
 			float time = (float)( (bx::getHPCounter()-m_timeOffset)/double(bx::getHPFrequency() ) );
 
+			bgfx::setViewRect(0, 0, 0, m_width, m_height);
+			bgfx::setViewClear(0
+				, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH
+				, 255U
+				, 1.0f
+				, 0
+			);
+			bgfx::discard();
             bgfx::touch(0);
 
-
-
-
-			bgfx::IndexBufferHandle ibh = m_ibh;
-			uint64_t state = 0
-				| (m_r ? BGFX_STATE_WRITE_R : 0)
-				| (m_g ? BGFX_STATE_WRITE_G : 0)
-				| (m_b ? BGFX_STATE_WRITE_B : 0)
-				| (m_a ? BGFX_STATE_WRITE_A : 0)
-				| BGFX_STATE_WRITE_Z
-				| BGFX_STATE_DEPTH_TEST_LESS
-				| BGFX_STATE_CULL_CW
-				| BGFX_STATE_MSAA
-				;
+			uint64_t state = BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A;
 
 			// Set vertex and index buffer.
 			bgfx::setVertexBuffer(0, m_vbh);
-			bgfx::setIndexBuffer(ibh);
+			bgfx::setIndexBuffer(m_ibh);
 
 			// Set render states.
 			bgfx::setState(state);
 
 			// Submit primitive for rendering to view 0.
 			bgfx::submit(0, m_program);
-
 
 			// Advance to next frame. Rendering thread will be kicked to
 			// process submitted rendering primitives.
@@ -223,22 +197,16 @@ public:
 	uint32_t m_reset;
 	int64_t m_timeOffset;
 
-	bool m_r;
-	bool m_g;
-	bool m_b;
-	bool m_a;
-
 
 	bgfx::VertexBufferHandle m_vbh;
 	bgfx::IndexBufferHandle m_ibh;
 	bgfx::ProgramHandle m_program;
-
 };
 
 } // namespace
 
 ENTRY_IMPLEMENT_MAIN(
-	  Imog3n::ExampleCubes
+	  Imog3n::Imog3nApp
 	, "Imogen"
 	, ""
 	, ""

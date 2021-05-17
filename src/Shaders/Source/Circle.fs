@@ -9,6 +9,6 @@ uniform vec4 T;
 
 void main()
 {
-	float c = Circle(v_texcoord0, radius.x, T.x);
+	//float c = Circle(v_texcoord0, radius.x, T.x);
     gl_FragColor = vec4(1.,0.,1.,1.);//c, c, c, c);
 }
