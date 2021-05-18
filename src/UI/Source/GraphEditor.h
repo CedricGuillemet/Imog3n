@@ -30,28 +30,52 @@
 #include "imgui.h"
 #include "imgui_internal.h"
 
+namespace GraphEditor {
+
 typedef size_t NodeIndex;
 typedef size_t SlotIndex;
 typedef size_t LinkIndex;
+typedef size_t TemplateIndex;
 
-struct GraphEditorDelegate
+struct Options
 {
-	//NodeIndex mSelectedNodeIndex{ InvalidNodeIndex };
+    ImU32 mBackgroundColor;
+    ImU32 mGridColor;
+    ImU32 mSelectedNodeColor;
+};
 
-    // getters
-    /*virtual ImVec2 GetEvaluationSize(NodeIndex nodeIndex) const = 0;
-    virtual int NodeIsProcesing(NodeIndex nodeIndex) const = 0;
-    virtual float NodeProgress(NodeIndex nodeIndex) const = 0;
-    virtual bool NodeIsCubemap(NodeIndex nodeIndex) const = 0;
-    virtual bool NodeIs2D(NodeIndex nodeIndex) const = 0;
-    virtual bool NodeIsCompute(NodeIndex nodeIndex) const = 0;
-    virtual bool IsIOPinned(NodeIndex nodeIndex, size_t io, bool forOutput) const = 0;
-    */
+struct Template
+{
+    ImU32 mHeaderColor;
+    ImU32 mBackgroundColor;
+    ImU8 mInputCount;
+    const char** mInputNames;
+    ImU8 mOutputCount;
+    const char** mOutputNames;
+};
+
+struct Node
+{
+    const char *mName;
+    TemplateIndex mTemplateIndex;
+    ImRect mRect;
+    bool mSelected;
+};
+
+struct Link
+{
+    NodeIndex mInputNodeIndex;
+    SlotIndex mInputSlotIndex;
+    NodeIndex mOutputNodeIndex;
+    SlotIndex mOutputSlotIndex;
+};
+
+struct Delegate
+{
     virtual bool RecurseIsLinked(NodeIndex from, NodeIndex to) const = 0;
-    //virtual bgfx::TextureHandle GetBitmapInfo(NodeIndex nodeIndex) const = 0;
 
-    virtual void DrawNodeImage(ImDrawList* drawList, const ImRect& rc, const ImVec2 marge, NodeIndex nodeIndex) = 0;
-    virtual void ContextMenu(ImVec2 rightclickPos, ImVec2 worldMousePos, int nodeHovered) = 0;
+    /*virtual void DrawNodeImage(ImDrawList* drawList, const ImRect& rc, const ImVec2 marge, NodeIndex nodeIndex) = 0;
+    virtual void ContextMenu(ImVec2 rightclickPos, ImVec2 worldMousePos, int nodeHovered) = 0;*/
 
     virtual void SelectNode(NodeIndex nodeIndex, bool selected) = 0;
     virtual void MoveSelectedNodes(const ImVec2 delta) = 0;
@@ -59,33 +83,19 @@ struct GraphEditorDelegate
     virtual void AddLink(NodeIndex inputNodeIndex, SlotIndex inputSlotIndex, NodeIndex outputNodeIndex, SlotIndex outputSlotIndex) = 0;
     virtual void DelLink(LinkIndex linkIndex) = 0;
 
+    virtual const size_t GetTemplateCount() = 0;
+    virtual const Template GetTemplate(TemplateIndex index) = 0;
 
-    // return false if background must be rendered by node graph
-    //virtual bool RenderBackground() = 0;
-
-    struct Node
-    {
-        const char *mName;
-        ImRect mRect;
-        uint32_t mHeaderColor;
-        uint32_t mBackgroundColor;
-        std::vector<const char*> mInputs;
-        std::vector<const char*> mOutputs;
-        //bool mbSelected;
-    };
-
-    struct Link
-    {
-        int mInputNodeIndex, mInputSlotIndex, mOutputNodeIndex, mOutputSlotIndex;
-    };
-
-    // node/links/rugs retrieval
-    /*virtual const std::vector<Node>& GetNodes() const = 0;
-    virtual const std::vector<Link>& GetLinks() const = 0;*/
+    virtual const size_t GetNodeCount() = 0;
+    virtual const Node GetNode(NodeIndex index) = 0;
+    
+    virtual const size_t GetLinkCount() = 0;
+    virtual const Link GetLink(LinkIndex index) = 0;
 };
 
-void GraphEditor(GraphEditorDelegate* delegate, bool enabled);
+void Show(Delegate& delegate, const Options& options, bool enabled);
 void GraphEditorClear();
 
-void GraphEditorUpdateScrolling(GraphEditorDelegate* delegate);
+void GraphEditorUpdateScrolling(Delegate* delegate);
 
+} // namespace
