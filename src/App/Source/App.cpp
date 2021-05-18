@@ -99,6 +99,11 @@ public:
 
 		// Create program from shaders.
 		m_program = LoadProgram("Node_vs", "Circle_fs");
+        
+        /*Array array = {"one", "two", "three"};
+        printf("%d \n", (int)array.size());
+        printf("%s \n", array[1]);
+        const char **toto = Array{"one", "two", "three"};*/
 	}
 
 	virtual int shutdown() override

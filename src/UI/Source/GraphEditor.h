@@ -59,7 +59,7 @@ struct Node
     const char *mName;
     TemplateIndex mTemplateIndex;
     ImRect mRect;
-    bool mSelected;
+    bool mSelected{false};
 };
 
 struct Link
