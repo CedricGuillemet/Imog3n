@@ -3,6 +3,7 @@
 #include "imgui/imgui.h"
 #include "Node.h"
 #include "Shaders.h"
+#include "UI.h"
 
 namespace Imog3n
 {
@@ -141,6 +142,8 @@ public:
 			ImGui::Text("Primitive topology:");
 
 			ImGui::End();
+
+			ShowNodeEditor();
 
 			imguiEndFrame();
 

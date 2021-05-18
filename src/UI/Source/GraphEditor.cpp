@@ -23,18 +23,15 @@
 // SOFTWARE.
 //
 
-#include "Platform.h"
 #include "imgui.h"
+#define IMGUI_DEFINE_MATH_OPERATORS
 #include "imgui_internal.h"
-#include "imgui_stdlib.h"
-#include "imgui_markdown/imgui_markdown.h"
 #include <math.h>
 #include <vector>
 #include <float.h>
 #include <array>
 #include "GraphEditor.h"
 
-extern ImGui::MarkdownConfig mdConfig;
 
 static inline float Distance(ImVec2& a, ImVec2& b)
 {
@@ -69,7 +66,6 @@ ImRect GetNodeRect(const GraphEditorDelegate::Node& node, float factor)
 const float NODE_SLOT_RADIUS = 8.0f;
 const ImVec2 NODE_WINDOW_PADDING(8.0f, 8.0f);
 
-static int editRug = -1;
 
 static ImVec2 editingNodeSource;
 bool editingInput = false;
@@ -85,8 +81,6 @@ enum NodeOperation
     NO_QuadSelecting,
     NO_MovingNodes,
     NO_EditInput,
-    NO_MovingRug,
-    NO_SizingRug,
     NO_PanView,
 };
 NodeOperation nodeOperation = NO_None;
@@ -116,232 +110,22 @@ void HandleZoomScroll(ImRect regionRect)
 
 void GraphEditorClear()
 {
-    editRug = -1;
     nodeOperation = NO_None;
     factor = 1.0f;
     factorTarget = 1.0f;
 }
 
-int DisplayRugs(GraphEditorDelegate* delegate, int editRug, ImDrawList* drawList, ImVec2 offset, float factor)
-{
-    ImGuiIO& io = ImGui::GetIO();
-    int ret = editRug;
-
-    const auto& nodes = delegate->GetNodes();
-    const auto& rugs = delegate->GetRugs();
-
-    // mouse pointer over any node?
-    bool overAnyNode = false;
-    for (auto& node : nodes)
-    {
-        ImVec2 node_rect_min = offset + node.mRect.Min * factor;
-        ImVec2 node_rect_max = node_rect_min + node.mRect.GetSize() * factor;
-        if (ImRect(node_rect_min, node_rect_max).Contains(io.MousePos))
-        {
-            overAnyNode = true;
-            break;
-        }
-    }
-
-    for (unsigned int rugIndex = 0; rugIndex < rugs.size(); rugIndex++)
-    {
-        auto& rug = rugs[rugIndex];
-        if (rugIndex == editRug)
-            continue;
-        ImGui::PushID(900 + rugIndex);
-        ImVec2 commentSize = rug.mRect.GetSize() * factor;
-
-        ImVec2 node_rect_min = offset + rug.mRect.Min * factor;
-
-        ImGui::SetCursorScreenPos(node_rect_min + NODE_WINDOW_PADDING);
-
-        ImVec2 node_rect_max = node_rect_min + commentSize;
-
-        ImRect rugRect(node_rect_min, node_rect_max);
-        if (rugRect.Contains(io.MousePos) && !overAnyNode)
-        {
-            if (io.MouseDoubleClicked[0])
-            {
-                ret = rugIndex;
-            }
-            else if (io.KeyShift && ImGui::IsMouseClicked(0))
-            {
-                for (auto i = 0; i < nodes.size(); i++)
-                {
-                    auto& node = nodes[i];
-                    ImVec2 node_rect_min = offset + node.mRect.Min * factor;
-                    ImVec2 node_rect_max = node_rect_min + node.mRect.GetSize() * factor;
-                    if (rugRect.Overlaps(ImRect(node_rect_min, node_rect_max)))
-                    {
-                        delegate->SelectNode(i, true);
-                    }
-                }
-            }
-        }
-        // drawList->AddText(io.FontDefault, 13 * ImLerp(1.f, factor, 0.5f), node_rect_min + ImVec2(5, 5), (rug.mColor &
-        // 0xFFFFFF) + 0xFF404040, rug.mText.c_str());
-        ImGui::SetCursorScreenPos(node_rect_min + NODE_WINDOW_PADDING);
-        ImGui::PushStyleColor(ImGuiCol_FrameBg, 0x0);
-        ImGui::PushStyleColor(ImGuiCol_Border, 0x0);
-        ImGui::BeginChildFrame(
-            88 + rugIndex, commentSize - NODE_WINDOW_PADDING * 2, ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoNav);
-
-        ImGui::Markdown(rug.mText, strlen(rug.mText), mdConfig);
-        drawList->AddRectFilled(node_rect_min, node_rect_max, (rug.mColor & 0xFFFFFF) + 0x60000000, 10.0f, 15);
-        drawList->AddRect(node_rect_min, node_rect_max, (rug.mColor & 0xFFFFFF) + 0x90000000, 10.0f, 15, 2.f);
-        ImGui::EndChildFrame();
-        ImGui::PopStyleColor(2);
-        ImGui::PopID();
-    }
-    return ret;
-}
-
-bool EditRug(GraphEditorDelegate *delegate, int rugIndex, ImDrawList* drawList, ImVec2 offset, float factor)
-{
-    ImGuiIO& io = ImGui::GetIO();
-    const auto& rugs = delegate->GetRugs();
-    ImVec2 commentSize = rugs[rugIndex].mRect.GetSize() * factor;
-    static int movingSizingRug = -1;
-    GraphEditorDelegate::Rug rug = rugs[rugIndex];
-    static GraphEditorDelegate::Rug editingRug;
-    static GraphEditorDelegate::Rug editingRugSource;
-
-    bool dirtyRug = false;
-    ImVec2 node_rect_min = offset + rug.mRect.Min * factor;
-    ImVec2 node_rect_max = node_rect_min + commentSize;
-    ImRect rugRect(node_rect_min, node_rect_max);
-    ImRect insideSizingRect(node_rect_min + commentSize - ImVec2(30, 30), node_rect_min + commentSize);
-    ImGui::SetCursorScreenPos(node_rect_min + NODE_WINDOW_PADDING);
-
-
-    drawList->AddRectFilled(node_rect_min, node_rect_max, (rug.mColor & 0xFFFFFF) + 0xE0000000, 10.0f, 15);
-    drawList->AddRect(node_rect_min, node_rect_max, (rug.mColor & 0xFFFFFF) + 0xFF000000, 10.0f, 15, 2.f);
-    drawList->AddTriangleFilled(node_rect_min + commentSize - ImVec2(25, 8),
-                                node_rect_min + commentSize - ImVec2(8, 25),
-                                node_rect_min + commentSize - ImVec2(8, 8),
-                                (rug.mColor & 0xFFFFFF) + 0x90000000);
-
-    ImGui::SetCursorScreenPos(node_rect_min + ImVec2(5, 5));
-    ImGui::PushStyleColor(ImGuiCol_FrameBg, IM_COL32(0, 0, 0, 0));
-    ImGui::PushStyleColor(ImGuiCol_Border, IM_COL32(0, 0, 0, 0));
-    std::string str = rug.mText;
-    dirtyRug |= ImGui::InputTextMultiline("", &str, (node_rect_max - node_rect_min) - ImVec2(30, 30));
-    ImGui::PopStyleColor(2);
-
-    ImGui::SetCursorScreenPos(node_rect_min + ImVec2(10, commentSize.y - 30));
-    for (int i = 0; i < 7; i++)
-    {
-        if (i > 0)
-            ImGui::SameLine();
-        ImGui::PushID(i);
-        ImColor buttonColor = ImColor::HSV(i / 7.0f, 0.6f, 0.6f);
-        ImGui::PushStyleColor(ImGuiCol_Button, (ImVec4)buttonColor);
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, (ImVec4)ImColor::HSV(i / 7.0f, 0.7f, 0.7f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonActive, (ImVec4)ImColor::HSV(i / 7.0f, 0.8f, 0.8f));
-        if (ImGui::Button("   "))
-        {
-            rug.mColor = buttonColor;
-            dirtyRug = true;
-        }
-        ImGui::PopStyleColor(3);
-        ImGui::PopID();
-    }
-    ImGui::SameLine(0, 50);
-
-    if (ImGui::Button("Delete"))
-    {
-        delegate->BeginTransaction(true);
-        delegate->DelRug(rugIndex);
-        delegate->EndTransaction();
-        return true;
-    }
-
-    bool createUndo = false;
-    bool commitUndo = false;
-
-    if (insideSizingRect.Contains(io.MousePos))
-    {
-        if (nodeOperation == NO_None && ImGui::IsMouseDragging(0, 1))
-        {
-            movingSizingRug = rugIndex;
-            createUndo = true;
-            nodeOperation = NO_SizingRug;
-            editingRugSource = editingRug = rug;
-        }
-    }
-
-    if (rugRect.Contains(io.MousePos) && !insideSizingRect.Contains(io.MousePos))
-    {
-        if (nodeOperation == NO_None && ImGui::IsMouseDragging(0, 1))
-        {
-            movingSizingRug = rugIndex;
-            createUndo = true;
-            nodeOperation = NO_MovingRug;
-            editingRugSource = editingRug = rug;
-        }
-    }
-
-    if (movingSizingRug != -1 && !io.MouseDown[0])
-    {
-        commitUndo = true;
-        nodeOperation = NO_None;
-    }
-
-    // undo/redo for sizing/moving
-    if (commitUndo)
-    {
-        // set back value 
-        delegate->BeginTransaction(false);
-        delegate->SetRug(movingSizingRug, editingRugSource.mRect, editingRugSource.mText, editingRugSource.mColor);
-        delegate->EndTransaction();
-
-        // add undo
-        delegate->BeginTransaction(true);
-        delegate->SetRug(movingSizingRug, editingRug.mRect, editingRug.mText, editingRug.mColor);
-        delegate->EndTransaction();
-        movingSizingRug = -1;
-    }
-
-    if (dirtyRug)
-    {
-        delegate->BeginTransaction(true);
-        delegate->SetRug(rugIndex, rug.mRect, str.c_str(), rug.mColor);
-        delegate->EndTransaction();
-    }
-
-    if (movingSizingRug != -1 && ImGui::IsMouseDragging(0))
-    {
-        if (nodeOperation == NO_MovingRug)
-        {
-            editingRug.mRect.Min += io.MouseDelta * factor;
-        }
-        editingRug.mRect.Max += io.MouseDelta * factor;
-
-        delegate->BeginTransaction(false);
-        delegate->SetRug(movingSizingRug, editingRug.mRect, editingRug.mText, editingRug.mColor);
-        delegate->EndTransaction();
-    }
-
-    if ((io.MouseClicked[0] || io.MouseClicked[1]) && !rugRect.Contains(io.MousePos))
-        return true;
-    return false;
-}
 
 void GraphEditorUpdateScrolling(GraphEditorDelegate *delegate)
 {
     const auto& nodes = delegate->GetNodes();
-    const auto& rugs = delegate->GetRugs();
 
-    if (nodes.empty() && rugs.empty())
+    if (nodes.empty())
         return;
 
     if (!nodes.empty())
     {
         scrolling = nodes[0].mRect.Min;
-    }
-    else if (!rugs.empty())
-    {
-        scrolling = rugs[0].mRect.Min;
     }
     else
     {
@@ -351,11 +135,6 @@ void GraphEditorUpdateScrolling(GraphEditorDelegate *delegate)
     {
         scrolling.x = std::min(scrolling.x, node.mRect.Min.x);
         scrolling.y = std::min(scrolling.y, node.mRect.Min.y);
-    }
-    for (auto& rug : rugs)
-    {
-        scrolling.x = std::min(scrolling.x, rug.mRect.Min.x);
-        scrolling.y = std::min(scrolling.y, rug.mRect.Min.y);
     }
 
     scrolling = ImVec2(40, 40) - scrolling;
@@ -489,16 +268,6 @@ static void HandleQuadSelection(
     static ImVec2 quadSelectPos;
     auto& nodes = delegate->GetNodes();
 
-    ImRect editingRugRect(ImVec2(FLT_MAX, FLT_MAX), ImVec2(FLT_MAX, FLT_MAX));
-    if (editRug != -1)
-    {
-        const auto& rug = delegate->GetRugs()[editRug];
-        ImVec2 commentSize = rug.mRect.GetSize() * factor;
-        ImVec2 node_rect_min = (offset + rug.mRect.Min) * factor;
-        ImVec2 node_rect_max = node_rect_min + commentSize;
-        editingRugRect = ImRect(node_rect_min, node_rect_max);
-    }
-
     if (nodeOperation == NO_QuadSelecting && ImGui::IsWindowFocused())
     {
         const ImVec2 bmin = ImMin(quadSelectPos, io.MousePos);
@@ -544,7 +313,7 @@ static void HandleQuadSelection(
         }
     }
     else if (nodeOperation == NO_None && io.MouseDown[0] && ImGui::IsWindowFocused() &&
-             contentRect.Contains(io.MousePos) && !editingRugRect.Contains(io.MousePos))
+             contentRect.Contains(io.MousePos))
     {
         nodeOperation = NO_QuadSelecting;
         quadSelectPos = io.MousePos;
@@ -655,8 +424,6 @@ bool HandleConnections(ImDrawList* drawList,
                         auto& link = links[linkIndex];
                         if (link.mOutputNodeIndex == nl.mOutputNodeIndex && link.mOutputSlotIndex == nl.mOutputSlotIndex)
                         {
-                            if (!delegate->InTransaction())
-                                delegate->BeginTransaction(true);
                             delegate->DelLink(linkIndex);
                             
                             break;
@@ -665,8 +432,6 @@ bool HandleConnections(ImDrawList* drawList,
 
                     if (!alreadyExisting)
                     {
-                        if (!delegate->InTransaction())
-                            delegate->BeginTransaction(true);
                         delegate->AddLink(nl.mInputNodeIndex, nl.mInputSlotIndex, nl.mOutputNodeIndex, nl.mOutputSlotIndex);
                     }
                 }
@@ -689,8 +454,6 @@ bool HandleConnections(ImDrawList* drawList,
                         auto& link = links[linkIndex];
                         if (link.mOutputNodeIndex == nodeIndex && link.mOutputSlotIndex == closestConn)
                         {
-                            if (!delegate->InTransaction())
-                                delegate->BeginTransaction(true);
                             delegate->DelLink(linkIndex);
                             break;
                         }
@@ -698,10 +461,6 @@ bool HandleConnections(ImDrawList* drawList,
                 }
             }
         }
-    }
-    if (nodeOperation == NO_EditingLink && delegate->InTransaction())
-    {
-        delegate->EndTransaction();
     }
     return hoverSlot;
 }
@@ -932,15 +691,6 @@ void GraphEditor(GraphEditorDelegate* delegate, bool enabled)
     ImVec2 offset = ImGui::GetCursorScreenPos() + scrolling * factor;
     captureOffset = scrollRegionLocalPos + scrolling * factor + ImVec2(10.f, 0.f);
 
-    {
-        ImGui::BeginChild("rugs_region", ImVec2(0, 0), true, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoMove);
-        ImDrawList* drawList = ImGui::GetWindowDrawList();
-
-        editRug = DisplayRugs(delegate, editRug, drawList, offset, factor);
-
-        ImGui::EndChild();
-    }
-
     ImGui::SetCursorPos(windowPos);
     ImGui::BeginGroup();
 
@@ -962,7 +712,7 @@ void GraphEditor(GraphEditorDelegate* delegate, bool enabled)
     ImDrawList* drawList = ImGui::GetWindowDrawList();
 
     // Background or Display grid
-    if (!delegate->RenderBackground())
+    if (1) //!delegate->RenderBackground())
     {
         DrawGrid(drawList, windowPos, canvasSize, factor);
     }
@@ -1032,30 +782,17 @@ void GraphEditor(GraphEditorDelegate* delegate, bool enabled)
             ImVec2 delta = io.MouseDelta / factor;
             if (fabsf(delta.x) >= 1.f || fabsf(delta.y) >= 1.f)
             {
-                if (!delegate->InTransaction())
-                {
-                    delegate->BeginTransaction(true);
-                }
                 delegate->MoveSelectedNodes(delta);
             }
         }
     }
 
-    // rugs
     drawList->ChannelsSetCurrent(0);
 
     // quad selection
     HandleQuadSelection(delegate, drawList, offset, factor, regionRect);
 
     drawList->ChannelsMerge();
-
-    if (editRug != -1)
-    {
-        if (EditRug(delegate, editRug, drawList, offset, factor))
-        {
-            editRug = -1;
-        }
-    }
 
     // releasing mouse button means it's done in any operation
     if (nodeOperation == NO_PanView)

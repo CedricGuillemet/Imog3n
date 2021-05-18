@@ -29,42 +29,39 @@
 #include <string>
 #include "imgui.h"
 #include "imgui_internal.h"
-#include "Types.h"
+
+typedef size_t NodeIndex;
+typedef size_t SlotIndex;
+typedef size_t LinkIndex;
 
 struct GraphEditorDelegate
 {
-	NodeIndex mSelectedNodeIndex{ InvalidNodeIndex };
+	//NodeIndex mSelectedNodeIndex{ InvalidNodeIndex };
 
     // getters
-    virtual ImVec2 GetEvaluationSize(NodeIndex nodeIndex) const = 0;
+    /*virtual ImVec2 GetEvaluationSize(NodeIndex nodeIndex) const = 0;
     virtual int NodeIsProcesing(NodeIndex nodeIndex) const = 0;
     virtual float NodeProgress(NodeIndex nodeIndex) const = 0;
     virtual bool NodeIsCubemap(NodeIndex nodeIndex) const = 0;
     virtual bool NodeIs2D(NodeIndex nodeIndex) const = 0;
     virtual bool NodeIsCompute(NodeIndex nodeIndex) const = 0;
     virtual bool IsIOPinned(NodeIndex nodeIndex, size_t io, bool forOutput) const = 0;
+    */
     virtual bool RecurseIsLinked(NodeIndex from, NodeIndex to) const = 0;
-    virtual bgfx::TextureHandle GetBitmapInfo(NodeIndex nodeIndex) const = 0;
+    //virtual bgfx::TextureHandle GetBitmapInfo(NodeIndex nodeIndex) const = 0;
 
     virtual void DrawNodeImage(ImDrawList* drawList, const ImRect& rc, const ImVec2 marge, NodeIndex nodeIndex) = 0;
     virtual void ContextMenu(ImVec2 rightclickPos, ImVec2 worldMousePos, int nodeHovered) = 0;
 
-    // operations
-    virtual bool InTransaction() = 0;
-    virtual void BeginTransaction(bool undoable) = 0;
-    virtual void EndTransaction() = 0;
-
-    virtual void DelRug(size_t rugIndex) = 0;
     virtual void SelectNode(NodeIndex nodeIndex, bool selected) = 0;
     virtual void MoveSelectedNodes(const ImVec2 delta) = 0;
     
     virtual void AddLink(NodeIndex inputNodeIndex, SlotIndex inputSlotIndex, NodeIndex outputNodeIndex, SlotIndex outputSlotIndex) = 0;
-    virtual void DelLink(size_t linkIndex) = 0;
+    virtual void DelLink(LinkIndex linkIndex) = 0;
 
-    virtual void SetRug(size_t rugIndex, const ImRect& rect, const char *szText, uint32_t color) = 0;
 
     // return false if background must be rendered by node graph
-    virtual bool RenderBackground() = 0;
+    //virtual bool RenderBackground() = 0;
 
     struct Node
     {
@@ -74,14 +71,7 @@ struct GraphEditorDelegate
         uint32_t mBackgroundColor;
         std::vector<const char*> mInputs;
         std::vector<const char*> mOutputs;
-        bool mbSelected;
-    };
-
-    struct Rug
-    {
-        ImRect mRect;
-        const char* mText;
-        uint32_t mColor;
+        //bool mbSelected;
     };
 
     struct Link
@@ -90,9 +80,8 @@ struct GraphEditorDelegate
     };
 
     // node/links/rugs retrieval
-    virtual const std::vector<Node>& GetNodes() const = 0;
-    virtual const std::vector<Rug>& GetRugs() const = 0;
-    virtual const std::vector<Link>& GetLinks() const = 0;
+    /*virtual const std::vector<Node>& GetNodes() const = 0;
+    virtual const std::vector<Link>& GetLinks() const = 0;*/
 };
 
 void GraphEditor(GraphEditorDelegate* delegate, bool enabled);
