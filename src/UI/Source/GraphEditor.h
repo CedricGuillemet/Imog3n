@@ -38,18 +38,22 @@
  | zoom speed / interpolation
  | viewState output
  | selection + colors
+ | in / out size + hovered size
  
  * inputs / output colors
-
+ * link color based on(input, output, fixed color)
+ 
+ * options edit
+ 
  * focus display
  * inside callback
- * options edit
+ 
  * shadows
- * in / out size + hovered size
+ 
  * right click callback(over node, over link, over nothing)
  * function fit2see all // FitNodes
- * link color based on(input, output, fixed color)
- * delete node key
+ 
+ * delete node
 */
 namespace GraphEditor {
 
