@@ -21,30 +21,37 @@ template <typename T, typename ... U> Array(T, U...) -> Array<T, 1 + sizeof...(U
 
 struct GraphEditorDelegate : public GraphEditor::Delegate
 {
-    bool RecurseIsLinked(GraphEditor::NodeIndex from, GraphEditor::NodeIndex to) const override
+    bool AllowedLink(GraphEditor::NodeIndex from, GraphEditor::NodeIndex to) const override
     {
-        return false;
+        return true;
     }
     
     void SelectNode(GraphEditor::NodeIndex nodeIndex, bool selected) override
     {
-        
+        mNodes[nodeIndex].mSelected = selected;
     }
     
     void MoveSelectedNodes(const ImVec2 delta) override
     {
-        mNodes[0].x += delta.x;
-        mNodes[0].y += delta.y;
+        for (auto& node : mNodes)
+        {
+            if (!node.mSelected)
+            {
+                continue;
+            }
+            node.x += delta.x;
+            node.y += delta.y;
+        }
     }
     
     void AddLink(GraphEditor::NodeIndex inputNodeIndex, GraphEditor::SlotIndex inputSlotIndex, GraphEditor::NodeIndex outputNodeIndex, GraphEditor::SlotIndex outputSlotIndex) override
     {
-        
+        mLinks.push_back({inputNodeIndex, inputSlotIndex, outputNodeIndex, outputSlotIndex});
     }
     
     void DelLink(GraphEditor::LinkIndex linkIndex) override
     {
-        
+        mLinks.erase(mLinks.begin() + linkIndex);
     }
 
     const size_t GetTemplateCount() override
@@ -69,7 +76,8 @@ struct GraphEditorDelegate : public GraphEditor::Delegate
         {
             myNode.name,
             myNode.templateIndex,
-            ImRect(ImVec2(myNode.x, myNode.y), ImVec2(myNode.x + 200, myNode.y + 200))
+            ImRect(ImVec2(myNode.x, myNode.y), ImVec2(myNode.x + 200, myNode.y + 200)),
+            myNode.mSelected
         };
     }
     
@@ -82,6 +90,8 @@ struct GraphEditorDelegate : public GraphEditor::Delegate
     {
         return mLinks[index];
     }
+    
+    // Graph datas
     
     static const inline Array<GraphEditor::Template, 1> mTemplates = {
         {
@@ -99,25 +109,29 @@ struct GraphEditorDelegate : public GraphEditor::Delegate
         const char* name;
         GraphEditor::TemplateIndex templateIndex;
         float x, y;
+        bool mSelected;
     };
     
     std::vector<Node> mNodes = {
         {
             "My Node 0",
             0,
-            60, 60
+            60, 60,
+            false
         },
 
         {
             "My Node 1",
             0,
-            360, 60
+            360, 60,
+            false
         },
 
         {
             "My Node 2",
             0,
-            360, 360
+            360, 360,
+            false
         }
     };
 
@@ -125,7 +139,9 @@ struct GraphEditorDelegate : public GraphEditor::Delegate
      
 };
 
-
+static GraphEditor::Options options;
+static GraphEditorDelegate delegate;
+static GraphEditor::ViewState viewState;
 
 void ShowNodeEditor()
 {
@@ -137,9 +153,17 @@ void ShowNodeEditor()
 		, 0
 	);
 
-    GraphEditor::Options options;
-    GraphEditorDelegate delegate;
-    GraphEditor::Show(delegate, options, true);
+    GraphEditor::Show(delegate, options, viewState, true);
 
 	ImGui::End();
+}
+
+void FitNodes()
+{
+    GraphEditor::FitNodes(delegate, viewState, false);
+}
+
+void FitSelectedNodes()
+{
+    GraphEditor::FitNodes(delegate, viewState, true);
 }

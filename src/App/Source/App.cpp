@@ -142,7 +142,15 @@ public:
 				);
 
 			ImGui::Text("Primitive topology:");
-
+            if (ImGui::Button("Fit Nodes"))
+            {
+                FitNodes();
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Fit Selected Nodes"))
+            {
+                FitSelectedNodes();
+            }
 			ImGui::End();
 
 			ShowNodeEditor();

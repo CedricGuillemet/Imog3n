@@ -30,23 +30,26 @@
 #include "imgui.h"
 #include "imgui_internal.h"
 /*
-| allow quad select + colors
-* inputs / output colors
-* selection + colors
-| round border size
-* focus display
-* inside callback
-* options edit
-* link code
-* link disply mode
-* shadows
-| node in / out text displayed 2 times
-* in / out size + hovered size
-* right click callback(over node, over link, over nothing)
-| zoom speed / interpolation
-* function fit2see all
-* link color based on(input, output, fixed color)
-* delete node key
+ | allow quad select + colors
+ | round border size
+ | link code
+ | link disply mode
+ | node in / out text displayed 2 times
+ | zoom speed / interpolation
+ | viewState output
+ | selection + colors
+ 
+ * inputs / output colors
+
+ * focus display
+ * inside callback
+ * options edit
+ * shadows
+ * in / out size + hovered size
+ * right click callback(over node, over link, over nothing)
+ * function fit2see all // FitNodes
+ * link color based on(input, output, fixed color)
+ * delete node key
 */
 namespace GraphEditor {
 
@@ -59,7 +62,8 @@ struct Options
 {
     ImU32 mBackgroundColor{ IM_COL32(80,80,100,255) };
     ImU32 mGridColor{ IM_COL32(100, 100, 100, 40) };
-    ImU32 mSelectedNodeColor{ IM_COL32(160, 160, 220, 255) };
+    ImU32 mSelectedNodeBorderColor{ IM_COL32(255, 130, 30, 255) };
+    ImU32 mNodeBorderColor{ IM_COL32(100, 100, 100, 0) };
     ImU32 mQuadSelection{ IM_COL32(255, 32, 32, 64) };
     ImU32 mQuadSelectionBorder{ IM_COL32(255, 32, 32, 255) };
     float mLineThickness{5};
@@ -67,8 +71,20 @@ struct Options
     float mRounding{3.f}; // rounding at node corners
     float mZoomRatio{0.1f}; // factor per mouse wheel delta
     float mZoomLerpFactor{0.25f}; // the smaller, the smoother
+    float mBorderSelectionThickness{6.f}; // thickness of selection border around nodes
+    float mBorderThickness{6.f}; // thickness of selection border around nodes
+    float mNodeSlotRadius{8.f}; // circle radius for inputs and outputs
+    float mNodeSlotHoverFactor{1.2f}; // increase size when hovering
     bool mDisplayLinksAsCurves{true}; // false is straight and 45deg lines
     bool mAllowQuadSelection{ true };
+    
+};
+
+struct ViewState
+{
+    ImVec2 position{0.0f, 0.0f};
+    float factor{ 1.0f }; // current zoom factor
+    float factorTarget{ 1.0f }; // targeted zoom factor interpolated using Options.mZoomLerpFactor
 };
 
 struct Template
@@ -99,7 +115,7 @@ struct Link
 
 struct Delegate
 {
-    virtual bool RecurseIsLinked(NodeIndex from, NodeIndex to) const = 0;
+    virtual bool AllowedLink(NodeIndex from, NodeIndex to) const = 0;
 
     virtual void SelectNode(NodeIndex nodeIndex, bool selected) = 0;
     virtual void MoveSelectedNodes(const ImVec2 delta) = 0;
@@ -117,9 +133,9 @@ struct Delegate
     virtual const Link GetLink(LinkIndex index) = 0;
 };
 
-void Show(Delegate& delegate, const Options& options, bool enabled);
+void Show(Delegate& delegate, const Options& options, ViewState& viewState, bool enabled);
 void GraphEditorClear();
 
-void GraphEditorUpdateScrolling(Delegate* delegate);
+void FitNodes(Delegate& delegate, ViewState& viewState, bool selectedNodesOnly);
 
 } // namespace
