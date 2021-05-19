@@ -44,19 +44,19 @@ static inline float sign(float v)
     return (v >= 0.f) ? 1.f : -1.f;
 }
 
-ImVec2 GetInputSlotPos(Delegate& delegate, const Node& node, int slotNumber, float factor)
+ImVec2 GetInputSlotPos(Delegate& delegate, const Node& node, SlotIndex slotIndex, float factor)
 {
     ImVec2 Size = node.mRect.GetSize() * factor;
     size_t InputsCount = delegate.GetTemplate(node.mTemplateIndex).mInputCount;
     return ImVec2(node.mRect.Min.x * factor,
-                  node.mRect.Min.y * factor + Size.y * ((float)slotNumber + 1) / ((float)InputsCount + 1) + 8.f);
+                  node.mRect.Min.y * factor + Size.y * ((float)slotIndex + 1) / ((float)InputsCount + 1) + 8.f);
 }
-ImVec2 GetOutputSlotPos(Delegate& delegate, const Node& node, int slotNumber, float factor)
+ImVec2 GetOutputSlotPos(Delegate& delegate, const Node& node, SlotIndex slotIndex, float factor)
 {
     ImVec2 Size = node.mRect.GetSize() * factor;
     size_t OutputsCount = delegate.GetTemplate(node.mTemplateIndex).mOutputCount;
     return ImVec2(node.mRect.Min.x * factor + Size.x,
-                  node.mRect.Min.y * factor + Size.y * ((float)slotNumber + 1) / ((float)OutputsCount + 1) + 8.f);
+                  node.mRect.Min.y * factor + Size.y * ((float)slotIndex + 1) / ((float)OutputsCount + 1) + 8.f);
 }
 ImRect GetNodeRect(const Node& node, float factor)
 {
@@ -140,7 +140,7 @@ static void DisplayLinks(Delegate& delegate,
                          const ImVec2 offset,
                          const float factor,
                          const ImRect regionRect,
-                         int hoveredNode)
+                         NodeIndex hoveredNode)
 {
     //const auto& links = delegate->GetLinks();
     //const auto& nodes = delegate->GetNodes();
@@ -286,9 +286,9 @@ static void HandleQuadSelection(
             for (int nodeIndex = 0; nodeIndex < nodeCount; nodeIndex++)
             {
                 const auto node = delegate.GetNode(nodeIndex);
-                ImVec2 node_rect_min = offset + node.mRect.Min * factor;
-                ImVec2 node_rect_max = node_rect_min + node.mRect.GetSize() * factor;
-                if (selectionRect.Overlaps(ImRect(node_rect_min, node_rect_max)))
+                ImVec2 nodeRectangleMin = offset + node.mRect.Min * factor;
+                ImVec2 nodeRectangleMax = nodeRectangleMin + node.mRect.GetSize() * factor;
+                if (selectionRect.Overlaps(ImRect(nodeRectangleMin, nodeRectangleMax)))
                 {
                     if (io.KeyCtrl)
                     {
@@ -467,14 +467,13 @@ bool HandleConnections(ImDrawList* drawList,
     return hoverSlot;
 }
 
-static void DrawGrid(ImDrawList* drawList, ImVec2 windowPos, const ImVec2 canvasSize, const float factor)
+static void DrawGrid(ImDrawList* drawList, ImVec2 windowPos, const ImVec2 canvasSize, ImU32 gridColor, float gridSize, const float factor)
 {
-    ImU32 GRID_COLOR = IM_COL32(100, 100, 100, 40);
-    float GRID_SZ = 64.0f * factor;
-    for (float x = fmodf(scrolling.x * factor, GRID_SZ); x < canvasSize.x; x += GRID_SZ)
-        drawList->AddLine(ImVec2(x, 0.0f) + windowPos, ImVec2(x, canvasSize.y) + windowPos, GRID_COLOR);
-    for (float y = fmodf(scrolling.y * factor, GRID_SZ); y < canvasSize.y; y += GRID_SZ)
-        drawList->AddLine(ImVec2(0.0f, y) + windowPos, ImVec2(canvasSize.x, y) + windowPos, GRID_COLOR);
+    float gridSpace = gridSize * factor;
+    for (float x = fmodf(scrolling.x * factor, gridSpace); x < canvasSize.x; x += gridSpace)
+        drawList->AddLine(ImVec2(x, 0.0f) + windowPos, ImVec2(x, canvasSize.y) + windowPos, gridColor);
+    for (float y = fmodf(scrolling.y * factor, gridSpace); y < canvasSize.y; y += gridSpace)
+        drawList->AddLine(ImVec2(0.0f, y) + windowPos, ImVec2(canvasSize.x, y) + windowPos, gridColor);
 }
 
 // return true if node is hovered
@@ -489,10 +488,10 @@ static bool DrawNode(ImDrawList* drawList,
     //const auto& nodes = delegate->GetNodes();
     const auto node = delegate.GetNode(nodeIndex);//&nodes[nodeIndex];
     const auto nodeTemplate = delegate.GetTemplate(node.mTemplateIndex);
-    const ImVec2 node_rect_min = offset + node.mRect.Min * factor;
+    const ImVec2 nodeRectangleMin = offset + node.mRect.Min * factor;
 
     const bool old_any_active = ImGui::IsAnyItemActive();
-    ImGui::SetCursorScreenPos(node_rect_min + NODE_WINDOW_PADDING);
+    ImGui::SetCursorScreenPos(nodeRectangleMin + NODE_WINDOW_PADDING);
     const ImVec2 nodeSize = node.mRect.GetSize() * factor;
 
     // test nested IO
@@ -522,14 +521,14 @@ static bool DrawNode(ImDrawList* drawList,
         }
     }
 
-    ImGui::SetCursorScreenPos(node_rect_min);
+    ImGui::SetCursorScreenPos(nodeRectangleMin);
     ImGui::InvisibleButton("node", nodeSize);
     // must be called right after creating the control we want to be able to move
     bool node_moving_active = ImGui::IsItemActive();
 
     // Save the size of what we have emitted and whether any of the widgets are being used
     bool node_widgets_active = (!old_any_active && ImGui::IsAnyItemActive());
-    ImVec2 node_rect_max = node_rect_min + nodeSize;
+    ImVec2 nodeRectangleMax = nodeRectangleMin + nodeSize;
 
     bool nodeHovered = false;
     if (ImGui::IsItemHovered() && nodeOperation == NO_None && !overInput)
@@ -568,22 +567,22 @@ static bool DrawNode(ImDrawList* drawList,
 
     ImU32 node_bg_color = nodeTemplate.mBackgroundColor + (nodeHovered?0x191919:0);
 
-    drawList->AddRect(node_rect_min,
-                      node_rect_max,
+    drawList->AddRect(nodeRectangleMin,
+                      nodeRectangleMax,
                       currentSelectedNode ? IM_COL32(255, 130, 30, 255) : IM_COL32(100, 100, 100, 0),
                       2.0f,
                       15,
                       currentSelectedNode ? 6.f : 2.f);
 
-    ImVec2 imgPos = node_rect_min + ImVec2(14, 25);
-    ImVec2 imgSize = node_rect_max + ImVec2(-5, -5) - imgPos;
+    ImVec2 imgPos = nodeRectangleMin + ImVec2(14, 25);
+    ImVec2 imgSize = nodeRectangleMax + ImVec2(-5, -5) - imgPos;
     float imgSizeComp = std::min(imgSize.x, imgSize.y);
 
-    drawList->AddRectFilled(node_rect_min, node_rect_max, node_bg_color, 2.0f);
+    drawList->AddRectFilled(nodeRectangleMin, nodeRectangleMax, node_bg_color, 2.0f);
     /*float progress = delegate->NodeProgress(nodeIndex);
     if (progress > FLT_EPSILON && progress < 1.f - FLT_EPSILON)
     {
-        ImVec2 progressLineA = node_rect_max - ImVec2(nodeSize.x - 2.f, 3.f);
+        ImVec2 progressLineA = nodeRectangleMax - ImVec2(nodeSize.x - 2.f, 3.f);
         ImVec2 progressLineB = progressLineA + ImVec2(nodeSize.x * factor - 4.f, 0.f);
         drawList->AddLine(progressLineA, progressLineB, 0xFF400000, 3.f);
         drawList->AddLine(progressLineA, ImLerp(progressLineA, progressLineB, progress), 0xFFFF0000, 3.f);
@@ -609,19 +608,19 @@ static bool DrawNode(ImDrawList* drawList,
 
     //delegate->DrawNodeImage(drawList, ImRect(imgPos, imgPosMax), marge, nodeIndex);
 
-    drawList->AddRectFilled(node_rect_min,
-                            ImVec2(node_rect_max.x, node_rect_min.y + 20),
+    drawList->AddRectFilled(nodeRectangleMin,
+                            ImVec2(nodeRectangleMax.x, nodeRectangleMin.y + 20),
                             nodeTemplate.mHeaderColor,
                             2.0f);
-    drawList->PushClipRect(node_rect_min, ImVec2(node_rect_max.x, node_rect_min.y + 20), true);
-    drawList->AddText(node_rect_min + ImVec2(2, 2), IM_COL32(0, 0, 0, 255), node.mName);
+    drawList->PushClipRect(nodeRectangleMin, ImVec2(nodeRectangleMax.x, nodeRectangleMin.y + 20), true);
+    drawList->AddText(nodeRectangleMin + ImVec2(2, 2), IM_COL32(0, 0, 0, 255), node.mName);
     drawList->PopClipRect();
 
 /*
     const ImTextureID bmpInfo = (ImTextureID)(uint64_t)delegate->GetBitmapInfo(nodeIndex).idx;
     if (bmpInfo)
     {
-        ImVec2 bmpInfoPos(node_rect_max - ImVec2(26, 12));
+        ImVec2 bmpInfoPos(nodeRectangleMax - ImVec2(26, 12));
         ImVec2 bmpInfoSize(20, 20);
         if (delegate->NodeIsCompute(nodeIndex))
         {
@@ -717,7 +716,7 @@ void Show(Delegate& delegate, const Options& options, bool enabled)
     // Background or Display grid
     if (1) //!delegate->RenderBackground())
     {
-        DrawGrid(drawList, windowPos, canvasSize, factor);
+        DrawGrid(drawList, windowPos, canvasSize, options.mGridColor, options.mGridSize, factor);
     }
 
     if (enabled)
@@ -761,7 +760,7 @@ void Show(Delegate& delegate, const Options& options, bool enabled)
                     continue;
                 }
 
-                ImGui::PushID(nodeIndex);
+                ImGui::PushID((int)nodeIndex);
 
                 // Display node contents first
                 // drawList->ChannelsSetCurrent(i+1); // channel 2 = Foreground channel 1 = background
@@ -811,7 +810,7 @@ void Show(Delegate& delegate, const Options& options, bool enabled)
         }
 
         // Open context menu
-        static int contextMenuHoverNode = -1;
+        static NodeIndex contextMenuHoverNode = -1;
         if (nodeOperation == NO_None && regionRect.Contains(io.MousePos) &&
             (ImGui::IsMouseClicked(1) || (ImGui::IsWindowFocused() && ImGui::IsKeyPressedMap(ImGuiKey_Tab))))
         {

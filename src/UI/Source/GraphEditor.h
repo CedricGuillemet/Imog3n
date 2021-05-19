@@ -39,9 +39,10 @@ typedef size_t TemplateIndex;
 
 struct Options
 {
-    ImU32 mBackgroundColor;
-    ImU32 mGridColor;
-    ImU32 mSelectedNodeColor;
+    ImU32 mBackgroundColor{ IM_COL32(80,80,100,255) };
+    ImU32 mGridColor{ IM_COL32(100, 100, 100, 40) };
+    ImU32 mSelectedNodeColor{ IM_COL32(160, 160, 220, 255) };
+    float mGridSize{64.f};
 };
 
 struct Template
@@ -73,9 +74,6 @@ struct Link
 struct Delegate
 {
     virtual bool RecurseIsLinked(NodeIndex from, NodeIndex to) const = 0;
-
-    /*virtual void DrawNodeImage(ImDrawList* drawList, const ImRect& rc, const ImVec2 marge, NodeIndex nodeIndex) = 0;
-    virtual void ContextMenu(ImVec2 rightclickPos, ImVec2 worldMousePos, int nodeHovered) = 0;*/
 
     virtual void SelectNode(NodeIndex nodeIndex, bool selected) = 0;
     virtual void MoveSelectedNodes(const ImVec2 delta) = 0;
