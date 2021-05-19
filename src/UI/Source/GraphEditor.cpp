@@ -86,22 +86,22 @@ enum NodeOperation
 };
 NodeOperation nodeOperation = NO_None;
 
-void HandleZoomScroll(ImRect regionRect)
+static void HandleZoomScroll(ImRect regionRect, const Options& options)
 {
     ImGuiIO& io = ImGui::GetIO();
 
     if (regionRect.Contains(io.MousePos))
     {
         if (io.MouseWheel < -FLT_EPSILON)
-            factorTarget *= 0.9f;
+            factorTarget *= 1.f - options.mZoomRatio;
 
         if (io.MouseWheel > FLT_EPSILON)
-            factorTarget *= 1.1f;
+            factorTarget *= 1.0f + options.mZoomRatio;
     }
 
     ImVec2 mouseWPosPre = (io.MousePos - ImGui::GetCursorScreenPos()) / factor;
     factorTarget = ImClamp(factorTarget, 0.2f, 3.f);
-    factor = ImLerp(factor, factorTarget, 0.15f);
+    factor = ImLerp(factor, factorTarget, options.mZoomLerpFactor);
     ImVec2 mouseWPosPost = (io.MousePos - ImGui::GetCursorScreenPos()) / factor;
     if (ImGui::IsMousePosValid())
     {
@@ -140,7 +140,8 @@ static void DisplayLinks(Delegate& delegate,
                          const ImVec2 offset,
                          const float factor,
                          const ImRect regionRect,
-                         NodeIndex hoveredNode)
+                         NodeIndex hoveredNode,
+                         const Options& options)
 {
     //const auto& links = delegate->GetLinks();
     //const auto& nodes = delegate->GetNodes();
@@ -160,106 +161,111 @@ static void DisplayLinks(Delegate& delegate,
 
         bool highlightCons = hoveredNode == link.mInputNodeIndex || hoveredNode == link.mOutputNodeIndex;
         uint32_t col = delegate.GetTemplate(nodeInput.mTemplateIndex).mHeaderColor | (highlightCons ? 0xF0F0F0 : 0);
-        ;
-        // curves
-        // drawList->AddBezierCurve(p1, p1 + ImVec2(+50, 0) * factor, p2 + ImVec2(-50, 0) * factor, p2, 0xFF000000, 4.f
-        // * factor); drawList->AddBezierCurve(p1, p1 + ImVec2(+50, 0) * factor, p2 + ImVec2(-50, 0) * factor, p2,
-        // col, 3.0f * factor);
-
-        // -/-
-        /*
-        ImVec2 p10 = p1 + ImVec2(20.f * factor, 0.f);
-        ImVec2 p20 = p2 - ImVec2(20.f * factor, 0.f);
-
-        ImVec2 dif = p20 - p10;
-        ImVec2 p1a, p1b;
-        if (fabsf(dif.x) > fabsf(dif.y))
+        if (options.mDisplayLinksAsCurves)
         {
-            p1a = p10 + ImVec2(fabsf(fabsf(dif.x) - fabsf(dif.y)) * 0.5 * sign(dif.x), 0.f);
-            p1b = p1a + ImVec2(fabsf(dif.y) * sign(dif.x) , dif.y);
-        }
-        else
-        {
-            p1a = p10 + ImVec2(0.f, fabsf(fabsf(dif.y) - fabsf(dif.x)) * 0.5 * sign(dif.y));
-            p1b = p1a + ImVec2(dif.x, fabsf(dif.x) * sign(dif.y));
-        }
-        drawList->AddLine(p1,  p10, col, 3.f * factor);
-        drawList->AddLine(p10, p1a, col, 3.f * factor);
-        drawList->AddLine(p1a, p1b, col, 3.f * factor);
-        drawList->AddLine(p1b, p20, col, 3.f * factor);
-        drawList->AddLine(p20,  p2, col, 3.f * factor);
-        */
-        std::array<ImVec2, 6> pts;
-        int ptCount = 0;
-        ImVec2 dif = p2 - p1;
+            // curves
+             drawList->AddBezierCurve(p1, p1 + ImVec2(50, 0) * factor, p2 + ImVec2(-50, 0) * factor, p2, 0xFF000000, options.mLineThickness * 1.5f * factor);
+             drawList->AddBezierCurve(p1, p1 + ImVec2(50, 0) * factor, p2 + ImVec2(-50, 0) * factor, p2, col, options.mLineThickness * 1.5f * factor);
+             /*
+            ImVec2 p10 = p1 + ImVec2(20.f * factor, 0.f);
+            ImVec2 p20 = p2 - ImVec2(20.f * factor, 0.f);
 
-        ImVec2 p1a, p1b;
-        const float limitx = 12.f * factor;
-        if (dif.x < limitx)
-        {
-            ImVec2 p10 = p1 + ImVec2(limitx, 0.f);
-            ImVec2 p20 = p2 - ImVec2(limitx, 0.f);
-
-            dif = p20 - p10;
-            p1a = p10 + ImVec2(0.f, dif.y * 0.5f);
-            p1b = p1a + ImVec2(dif.x, 0.f);
-
-            pts = {p1, p10, p1a, p1b, p20, p2};
-            ptCount = 6;
-        }
-        else
-        {
-            if (fabsf(dif.y) < 1.f)
+            ImVec2 dif = p20 - p10;
+            ImVec2 p1a, p1b;
+            if (fabsf(dif.x) > fabsf(dif.y))
             {
-                pts = {p1, (p1 + p2) * 0.5f, p2};
-                ptCount = 3;
+                p1a = p10 + ImVec2(fabsf(fabsf(dif.x) - fabsf(dif.y)) * 0.5 * sign(dif.x), 0.f);
+                p1b = p1a + ImVec2(fabsf(dif.y) * sign(dif.x) , dif.y);
             }
             else
             {
-                if (fabsf(dif.y) < 10.f)
+                p1a = p10 + ImVec2(0.f, fabsf(fabsf(dif.y) - fabsf(dif.x)) * 0.5 * sign(dif.y));
+                p1b = p1a + ImVec2(dif.x, fabsf(dif.x) * sign(dif.y));
+            }
+            drawList->AddLine(p1,  p10, col, 3.f * factor);
+            drawList->AddLine(p10, p1a, col, 3.f * factor);
+            drawList->AddLine(p1a, p1b, col, 3.f * factor);
+            drawList->AddLine(p1b, p20, col, 3.f * factor);
+            drawList->AddLine(p20,  p2, col, 3.f * factor);
+            */
+        }
+        else
+        {
+            // straight lines
+            std::array<ImVec2, 6> pts;
+            int ptCount = 0;
+            ImVec2 dif = p2 - p1;
+
+            ImVec2 p1a, p1b;
+            const float limitx = 12.f * factor;
+            if (dif.x < limitx)
+            {
+                ImVec2 p10 = p1 + ImVec2(limitx, 0.f);
+                ImVec2 p20 = p2 - ImVec2(limitx, 0.f);
+
+                dif = p20 - p10;
+                p1a = p10 + ImVec2(0.f, dif.y * 0.5f);
+                p1b = p1a + ImVec2(dif.x, 0.f);
+
+                pts = { p1, p10, p1a, p1b, p20, p2 };
+                ptCount = 6;
+            }
+            else
+            {
+                if (fabsf(dif.y) < 1.f)
                 {
-                    if (fabsf(dif.x) > fabsf(dif.y))
-                    {
-                        p1a = p1 + ImVec2(fabsf(fabsf(dif.x) - fabsf(dif.y)) * 0.5f * sign(dif.x), 0.f);
-                        p1b = p1a + ImVec2(fabsf(dif.y) * sign(dif.x), dif.y);
-                    }
-                    else
-                    {
-                        p1a = p1 + ImVec2(0.f, fabsf(fabsf(dif.y) - fabsf(dif.x)) * 0.5f * sign(dif.y));
-                        p1b = p1a + ImVec2(dif.x, fabsf(dif.x) * sign(dif.y));
-                    }
+                    pts = { p1, (p1 + p2) * 0.5f, p2 };
+                    ptCount = 3;
                 }
                 else
                 {
-                    if (fabsf(dif.x) > fabsf(dif.y))
+                    if (fabsf(dif.y) < 10.f)
                     {
-                        float d = fabsf(dif.y) * sign(dif.x) * 0.5f;
-                        p1a = p1 + ImVec2(d, dif.y * 0.5f);
-                        p1b = p1a + ImVec2(fabsf(fabsf(dif.x) - fabsf(d) * 2.f) * sign(dif.x), 0.f);
+                        if (fabsf(dif.x) > fabsf(dif.y))
+                        {
+                            p1a = p1 + ImVec2(fabsf(fabsf(dif.x) - fabsf(dif.y)) * 0.5f * sign(dif.x), 0.f);
+                            p1b = p1a + ImVec2(fabsf(dif.y) * sign(dif.x), dif.y);
+                        }
+                        else
+                        {
+                            p1a = p1 + ImVec2(0.f, fabsf(fabsf(dif.y) - fabsf(dif.x)) * 0.5f * sign(dif.y));
+                            p1b = p1a + ImVec2(dif.x, fabsf(dif.x) * sign(dif.y));
+                        }
                     }
                     else
                     {
-                        float d = fabsf(dif.x) * sign(dif.y) * 0.5f;
-                        p1a = p1 + ImVec2(dif.x * 0.5f, d);
-                        p1b = p1a + ImVec2(0.f, fabsf(fabsf(dif.y) - fabsf(d) * 2.f) * sign(dif.y));
+                        if (fabsf(dif.x) > fabsf(dif.y))
+                        {
+                            float d = fabsf(dif.y) * sign(dif.x) * 0.5f;
+                            p1a = p1 + ImVec2(d, dif.y * 0.5f);
+                            p1b = p1a + ImVec2(fabsf(fabsf(dif.x) - fabsf(d) * 2.f) * sign(dif.x), 0.f);
+                        }
+                        else
+                        {
+                            float d = fabsf(dif.x) * sign(dif.y) * 0.5f;
+                            p1a = p1 + ImVec2(dif.x * 0.5f, d);
+                            p1b = p1a + ImVec2(0.f, fabsf(fabsf(dif.y) - fabsf(d) * 2.f) * sign(dif.y));
+                        }
                     }
+                    pts = { p1, p1a, p1b, p2 };
+                    ptCount = 4;
                 }
-                pts = {p1, p1a, p1b, p2};
-                ptCount = 4;
             }
-        }
-        float highLightFactor = factor * (highlightCons ? 2.0f : 1.f);
-        for (int pass = 0; pass < 2; pass++)
-        {
-            drawList->AddPolyline(
-                pts.data(), ptCount, pass ? col : 0xFF000000, false, (pass ? 5.f : 7.5f) * highLightFactor);
+            float highLightFactor = factor * (highlightCons ? 2.0f : 1.f);
+            for (int pass = 0; pass < 2; pass++)
+            {
+                drawList->AddPolyline(pts.data(), ptCount, pass ? col : 0xFF000000, false, (pass ? options.mLineThickness : (options.mLineThickness * 1.5f)) * highLightFactor);
+            }
         }
     }
 }
 
-static void HandleQuadSelection(
-    Delegate& delegate, ImDrawList* drawList, const ImVec2 offset, const float factor, ImRect contentRect)
+static void HandleQuadSelection(Delegate& delegate, ImDrawList* drawList, const ImVec2 offset, const float factor, ImRect contentRect, const Options& options)
 {
+    if (!options.mAllowQuadSelection)
+    {
+        return;
+    }
     ImGuiIO& io = ImGui::GetIO();
     static ImVec2 quadSelectPos;
     //auto& nodes = delegate->GetNodes();
@@ -269,8 +275,8 @@ static void HandleQuadSelection(
     {
         const ImVec2 bmin = ImMin(quadSelectPos, io.MousePos);
         const ImVec2 bmax = ImMax(quadSelectPos, io.MousePos);
-        drawList->AddRectFilled(bmin, bmax, 0x40FF2020, 1.f);
-        drawList->AddRect(bmin, bmax, 0xFFFF2020, 1.f);
+        drawList->AddRectFilled(bmin, bmax, options.mQuadSelection, 1.f);
+        drawList->AddRect(bmin, bmax, options.mQuadSelectionBorder, 1.f);
         if (!io.MouseDown[0])
         {
             if (!io.KeyCtrl && !io.KeyShift)
@@ -376,11 +382,13 @@ bool HandleConnections(ImDrawList* drawList,
                 closestTextPos = textPos;
                 closestPos = p;
             }
-
-            drawList->AddCircleFilled(p, NODE_SLOT_RADIUS * 1.2f, IM_COL32(0, 0, 0, 200));
-            drawList->AddCircleFilled(p, NODE_SLOT_RADIUS * 0.75f * 1.2f, IM_COL32(160, 160, 160, 200));
-            drawList->AddText(io.FontDefault, 14, textPos + ImVec2(2, 2), IM_COL32(0, 0, 0, 255), conText);
-            drawList->AddText(io.FontDefault, 14, textPos, IM_COL32(150, 150, 150, 255), conText);
+            else
+            {
+                drawList->AddCircleFilled(p, NODE_SLOT_RADIUS * 1.2f, IM_COL32(0, 0, 0, 200));
+                drawList->AddCircleFilled(p, NODE_SLOT_RADIUS * 0.75f * 1.2f, IM_COL32(160, 160, 160, 200));
+                drawList->AddText(io.FontDefault, 14, textPos + ImVec2(2, 2), IM_COL32(0, 0, 0, 255), conText);
+                drawList->AddText(io.FontDefault, 14, textPos, IM_COL32(150, 150, 150, 255), conText);
+            }
         }
 
         if (closestConn != -1)
@@ -482,7 +490,8 @@ static bool DrawNode(ImDrawList* drawList,
                      const ImVec2 offset,
                      const float factor,
                      Delegate& delegate,
-                     bool overInput)
+                     bool overInput,
+                     const Options& options)
 {
     ImGuiIO& io = ImGui::GetIO();
     //const auto& nodes = delegate->GetNodes();
@@ -508,10 +517,11 @@ static bool DrawNode(ImDrawList* drawList,
             const char* con = i ? nodeTemplate.mOutputNames[slotIndex] : nodeTemplate.mInputNames[slotIndex];//node.mOutputs[slot_idx] : node->mInputs[slot_idx];
             /*if (!delegate->IsIOPinned(nodeIndex, slot_idx, i == 1))
             {
-                continue;
+               
             }*/
-            ImVec2 p =
-                offset + (i ? GetOutputSlotPos(delegate, node, slotIndex, factor) : GetInputSlotPos(delegate, node, slotIndex, factor));
+            continue;
+
+            ImVec2 p = offset + (i ? GetOutputSlotPos(delegate, node, slotIndex, factor) : GetInputSlotPos(delegate, node, slotIndex, factor));
             const float arc = 28.f * (float(i) * 0.3f + 1.0f) * (i ? 1.f : -1.f);
             const float ofs = 0.f;
 
@@ -570,7 +580,7 @@ static bool DrawNode(ImDrawList* drawList,
     drawList->AddRect(nodeRectangleMin,
                       nodeRectangleMax,
                       currentSelectedNode ? IM_COL32(255, 130, 30, 255) : IM_COL32(100, 100, 100, 0),
-                      2.0f,
+                      options.mRounding,
                       15,
                       currentSelectedNode ? 6.f : 2.f);
 
@@ -578,7 +588,7 @@ static bool DrawNode(ImDrawList* drawList,
     ImVec2 imgSize = nodeRectangleMax + ImVec2(-5, -5) - imgPos;
     float imgSizeComp = std::min(imgSize.x, imgSize.y);
 
-    drawList->AddRectFilled(nodeRectangleMin, nodeRectangleMax, node_bg_color, 2.0f);
+    drawList->AddRectFilled(nodeRectangleMin, nodeRectangleMax, node_bg_color, options.mRounding);
     /*float progress = delegate->NodeProgress(nodeIndex);
     if (progress > FLT_EPSILON && progress < 1.f - FLT_EPSILON)
     {
@@ -611,7 +621,7 @@ static bool DrawNode(ImDrawList* drawList,
     drawList->AddRectFilled(nodeRectangleMin,
                             ImVec2(nodeRectangleMax.x, nodeRectangleMin.y + 20),
                             nodeTemplate.mHeaderColor,
-                            2.0f);
+        options.mRounding);
     drawList->PushClipRect(nodeRectangleMin, ImVec2(nodeRectangleMax.x, nodeRectangleMin.y + 20), true);
     drawList->AddText(nodeRectangleMin + ImVec2(2, 2), IM_COL32(0, 0, 0, 255), node.mName);
     drawList->PopClipRect();
@@ -683,13 +693,13 @@ void Show(Delegate& delegate, const Options& options, bool enabled)
     const ImVec2 scrollRegionLocalPos(0, 50);
     //const auto& nodes = delegate->GetNodes();
 
-    bool openContextMenu = false;
+    //bool openContextMenu = false;
 
     static ImVec2 scenePos;
 
     ImRect regionRect(windowPos, windowPos + canvasSize);
 
-    HandleZoomScroll(regionRect);
+    HandleZoomScroll(regionRect, options);
     ImVec2 offset = ImGui::GetCursorScreenPos() + scrolling * factor;
     captureOffset = scrollRegionLocalPos + scrolling * factor + ImVec2(10.f, 0.f);
 
@@ -725,7 +735,7 @@ void Show(Delegate& delegate, const Options& options, bool enabled)
         // Display links
         drawList->ChannelsSplit(3);
         drawList->ChannelsSetCurrent(1); // Background
-        DisplayLinks(delegate, drawList, offset, factor, regionRect, hoveredNode);
+        DisplayLinks(delegate, drawList, offset, factor, regionRect, hoveredNode, options);
 
         // edit node link
         if (nodeOperation == NO_EditingLink)
@@ -767,7 +777,7 @@ void Show(Delegate& delegate, const Options& options, bool enabled)
 
                 bool overInput = HandleConnections(drawList, nodeIndex, offset, factor, delegate, false);
 
-                if (DrawNode(drawList, nodeIndex, offset, factor, delegate, overInput))
+                if (DrawNode(drawList, nodeIndex, offset, factor, delegate, overInput, options))
                     hoveredNode = nodeIndex;
 
                 HandleConnections(drawList, nodeIndex, offset, factor, delegate, true);
@@ -792,7 +802,7 @@ void Show(Delegate& delegate, const Options& options, bool enabled)
         drawList->ChannelsSetCurrent(0);
 
         // quad selection
-        HandleQuadSelection(delegate, drawList, offset, factor, regionRect);
+        HandleQuadSelection(delegate, drawList, offset, factor, regionRect, options);
 
         drawList->ChannelsMerge();
 
@@ -810,6 +820,7 @@ void Show(Delegate& delegate, const Options& options, bool enabled)
         }
 
         // Open context menu
+        /*
         static NodeIndex contextMenuHoverNode = -1;
         if (nodeOperation == NO_None && regionRect.Contains(io.MousePos) &&
             (ImGui::IsMouseClicked(1) || (ImGui::IsWindowFocused() && ImGui::IsKeyPressedMap(ImGuiKey_Tab))))
@@ -823,7 +834,7 @@ void Show(Delegate& delegate, const Options& options, bool enabled)
             scenePos = (ImGui::GetMousePosOnOpeningCurrentPopup() - offset) / factor;
             ImGui::OpenPopup("context_menu");
         }
-
+        */
         //delegate->ContextMenu(scenePos, (io.MousePos - offset) / factor, contextMenuHoverNode);
 
         // Scrolling

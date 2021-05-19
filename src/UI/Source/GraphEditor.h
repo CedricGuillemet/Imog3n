@@ -29,7 +29,25 @@
 #include <string>
 #include "imgui.h"
 #include "imgui_internal.h"
-
+/*
+| allow quad select + colors
+* inputs / output colors
+* selection + colors
+| round border size
+* focus display
+* inside callback
+* options edit
+* link code
+* link disply mode
+* shadows
+| node in / out text displayed 2 times
+* in / out size + hovered size
+* right click callback(over node, over link, over nothing)
+| zoom speed / interpolation
+* function fit2see all
+* link color based on(input, output, fixed color)
+* delete node key
+*/
 namespace GraphEditor {
 
 typedef size_t NodeIndex;
@@ -42,7 +60,15 @@ struct Options
     ImU32 mBackgroundColor{ IM_COL32(80,80,100,255) };
     ImU32 mGridColor{ IM_COL32(100, 100, 100, 40) };
     ImU32 mSelectedNodeColor{ IM_COL32(160, 160, 220, 255) };
+    ImU32 mQuadSelection{ IM_COL32(255, 32, 32, 64) };
+    ImU32 mQuadSelectionBorder{ IM_COL32(255, 32, 32, 255) };
+    float mLineThickness{5};
     float mGridSize{64.f};
+    float mRounding{3.f}; // rounding at node corners
+    float mZoomRatio{0.1f}; // factor per mouse wheel delta
+    float mZoomLerpFactor{0.25f}; // the smaller, the smoother
+    bool mDisplayLinksAsCurves{true}; // false is straight and 45deg lines
+    bool mAllowQuadSelection{ true };
 };
 
 struct Template

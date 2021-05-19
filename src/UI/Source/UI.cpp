@@ -33,7 +33,8 @@ struct GraphEditorDelegate : public GraphEditor::Delegate
     
     void MoveSelectedNodes(const ImVec2 delta) override
     {
-        
+        mNodes[0].x += delta.x;
+        mNodes[0].y += delta.y;
     }
     
     void AddLink(GraphEditor::NodeIndex inputNodeIndex, GraphEditor::SlotIndex inputSlotIndex, GraphEditor::NodeIndex outputNodeIndex, GraphEditor::SlotIndex outputSlotIndex) override
@@ -74,12 +75,12 @@ struct GraphEditorDelegate : public GraphEditor::Delegate
     
     const size_t GetLinkCount() override
     {
-        return 0;
+        return mLinks.size();
     }
     
     const GraphEditor::Link GetLink(GraphEditor::LinkIndex index) override
     {
-        return {};
+        return mLinks[index];
     }
     
     static const inline Array<GraphEditor::Template, 1> mTemplates = {
@@ -119,6 +120,8 @@ struct GraphEditorDelegate : public GraphEditor::Delegate
             360, 360
         }
     };
+
+    std::vector<GraphEditor::Link> mLinks = { {0,0,1,0} };
      
 };
 
