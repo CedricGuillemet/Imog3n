@@ -89,22 +89,22 @@ static void HandleZoomScroll(ImRect regionRect, ViewState& viewState, const Opti
     {
         if (io.MouseWheel < -FLT_EPSILON)
         {
-            viewState.factorTarget *= 1.f - options.mZoomRatio;
+            viewState.mFactorTarget *= 1.f - options.mZoomRatio;
         }
 
         if (io.MouseWheel > FLT_EPSILON)
         {
-            viewState.factorTarget *= 1.0f + options.mZoomRatio;
+            viewState.mFactorTarget *= 1.0f + options.mZoomRatio;
         }
     }
 
-    ImVec2 mouseWPosPre = (io.MousePos - ImGui::GetCursorScreenPos()) / viewState.factor;
-    viewState.factorTarget = ImClamp(viewState.factorTarget, 0.2f, 3.f);
-    viewState.factor = ImLerp(viewState.factor, viewState.factorTarget, options.mZoomLerpFactor);
-    ImVec2 mouseWPosPost = (io.MousePos - ImGui::GetCursorScreenPos()) / viewState.factor;
+    ImVec2 mouseWPosPre = (io.MousePos - ImGui::GetCursorScreenPos()) / viewState.mFactor;
+    viewState.mFactorTarget = ImClamp(viewState.mFactorTarget, 0.2f, 3.f);
+    viewState.mFactor = ImLerp(viewState.mFactor, viewState.mFactorTarget, options.mZoomLerpFactor);
+    ImVec2 mouseWPosPost = (io.MousePos - ImGui::GetCursorScreenPos()) / viewState.mFactor;
     if (ImGui::IsMousePosValid())
     {
-        viewState.position += mouseWPosPost - mouseWPosPre;
+        viewState.mPosition += mouseWPosPost - mouseWPosPre;
     }
 }
 
@@ -122,15 +122,15 @@ void FitNodes(Delegate& delegate, ViewState& viewState, bool selectedNodesOnly)
         return;
     }
 
-    viewState.position = delegate.GetNode(0).mRect.Min;
+    viewState.mPosition = delegate.GetNode(0).mRect.Min;
     for (NodeIndex nodeIndex = 1; nodeIndex < nodeCount; nodeIndex++)
     {
         const Node& node = delegate.GetNode(nodeIndex);
-        viewState.position.x = std::min(viewState.position.x, node.mRect.Min.x);
-        viewState.position.y = std::min(viewState.position.y, node.mRect.Min.y);
+        viewState.mPosition.x = std::min(viewState.mPosition.x, node.mRect.Min.x);
+        viewState.mPosition.y = std::min(viewState.mPosition.y, node.mRect.Min.y);
     }
 
-    viewState.position = ImVec2(40, 40) - viewState.position;
+    viewState.mPosition = ImVec2(40, 40) - viewState.mPosition;
 }
 
 static void DisplayLinks(Delegate& delegate,
@@ -329,17 +329,14 @@ static bool HandleConnections(ImDrawList* drawList,
 {
     static NodeIndex editingNodeIndex;
     static SlotIndex editingSlotIndex;
-    //const auto& links = delegate->GetLinks();
-    //const auto& nodes = delegate->GetNodes();
 
     ImGuiIO& io = ImGui::GetIO();
-    //const Delegate::Node* node = &nodes[nodeIndex];
     const auto node = delegate.GetNode(nodeIndex);
     const auto nodeTemplate = delegate.GetTemplate(node.mTemplateIndex);
     const auto linkCount = delegate.GetLinkCount();
 
-    size_t InputsCount = nodeTemplate.mInputCount;//node->mInputs.size();
-    size_t OutputsCount = nodeTemplate.mOutputCount;//node->mOutputs.size();
+    size_t InputsCount = nodeTemplate.mInputCount;
+    size_t OutputsCount = nodeTemplate.mOutputCount;
 
     // draw/use inputs/outputs
     bool hoverSlot = false;
@@ -353,8 +350,8 @@ static bool HandleConnections(ImDrawList* drawList,
         
         for (SlotIndex slotIndex = 0; slotIndex < slotCount[i]; slotIndex++)
         {
-            const char* con = i ? nodeTemplate.mOutputNames[slotIndex] : nodeTemplate.mInputNames[slotIndex];//node->mOutputs[slot_idx] : node->mInputs[slot_idx];
-            const char* conText = con ? con : "";
+            const char** con = i ? nodeTemplate.mOutputNames : nodeTemplate.mInputNames;
+            const char* conText = (con && con[slotIndex]) ? con[slotIndex] : "";
 
             ImVec2 p =
                 offset + (i ? GetOutputSlotPos(delegate, node, slotIndex, factor) : GetInputSlotPos(delegate, node, slotIndex, factor));
@@ -380,8 +377,10 @@ static bool HandleConnections(ImDrawList* drawList,
             }
             else
             {
+                const ImU32* slotColorSource = i ? nodeTemplate.mOutputColors : nodeTemplate.mInputColors;
+                const ImU32 slotColor = slotColorSource ? slotColorSource[slotIndex] : options.mDefaultSlotColor;
                 drawList->AddCircleFilled(p, options.mNodeSlotRadius, IM_COL32(0, 0, 0, 200));
-                drawList->AddCircleFilled(p, options.mNodeSlotRadius * 0.75f, IM_COL32(160, 160, 160, 200));
+                drawList->AddCircleFilled(p, options.mNodeSlotRadius * 0.75f, slotColor);
                 drawList->AddText(io.FontDefault, 14, textPos + ImVec2(2, 2), IM_COL32(0, 0, 0, 255), conText);
                 drawList->AddText(io.FontDefault, 14, textPos, IM_COL32(150, 150, 150, 255), conText);
             }
@@ -389,11 +388,13 @@ static bool HandleConnections(ImDrawList* drawList,
 
         if (closestConn != -1)
         {
-            const char* con = i ? nodeTemplate.mOutputNames[closestConn] : nodeTemplate.mInputNames[closestConn];
-            const char* conText = con ? con : "";
+            const char** con = i ? nodeTemplate.mOutputNames : nodeTemplate.mInputNames;
+            const char* conText = (con && con[closestConn]) ? con[closestConn] : "";
+            const ImU32* slotColorSource = i ? nodeTemplate.mOutputColors : nodeTemplate.mInputColors;
+            const ImU32 slotColor = slotColorSource ? slotColorSource[closestConn] : options.mDefaultSlotColor;
             hoverSlot = true;
             drawList->AddCircleFilled(closestPos, options.mNodeSlotRadius * options.mNodeSlotHoverFactor * 0.75f, IM_COL32(0, 0, 0, 200));
-            drawList->AddCircleFilled(closestPos, options.mNodeSlotRadius * options.mNodeSlotHoverFactor, IM_COL32(200, 200, 200, 200));
+            drawList->AddCircleFilled(closestPos, options.mNodeSlotRadius * options.mNodeSlotHoverFactor, slotColor);
             drawList->AddText(io.FontDefault, 16, closestTextPos + ImVec2(1, 1), IM_COL32(0, 0, 0, 255), conText);
             drawList->AddText(io.FontDefault, 16, closestTextPos, IM_COL32(250, 250, 250, 255), conText);
             bool inputToOutput = (!editingInput && !i) || (editingInput && i);
@@ -471,10 +472,10 @@ static bool HandleConnections(ImDrawList* drawList,
 
 static void DrawGrid(ImDrawList* drawList, ImVec2 windowPos, const ViewState& viewState, const ImVec2 canvasSize, ImU32 gridColor, float gridSize)
 {
-    float gridSpace = gridSize * viewState.factor;
-    for (float x = fmodf(viewState.position.x * viewState.factor, gridSpace); x < canvasSize.x; x += gridSpace)
+    float gridSpace = gridSize * viewState.mFactor;
+    for (float x = fmodf(viewState.mPosition.x * viewState.mFactor, gridSpace); x < canvasSize.x; x += gridSpace)
         drawList->AddLine(ImVec2(x, 0.0f) + windowPos, ImVec2(x, canvasSize.y) + windowPos, gridColor);
-    for (float y = fmodf(viewState.position.y * viewState.factor, gridSpace); y < canvasSize.y; y += gridSpace)
+    for (float y = fmodf(viewState.mPosition.y * viewState.mFactor, gridSpace); y < canvasSize.y; y += gridSpace)
         drawList->AddLine(ImVec2(0.0f, y) + windowPos, ImVec2(canvasSize.x, y) + windowPos, gridColor);
 }
 
@@ -501,6 +502,7 @@ static bool DrawNode(ImDrawList* drawList,
     const size_t InputsCount = nodeTemplate.mInputCount;
     const size_t OutputsCount = nodeTemplate.mOutputCount;
 
+    /*
     for (int i = 0; i < 2; i++)
     {
         const size_t slotCount[2] = {InputsCount, OutputsCount};
@@ -508,10 +510,10 @@ static bool DrawNode(ImDrawList* drawList,
         for (size_t slotIndex = 0; slotIndex < slotCount[i]; slotIndex++)
         {
             const char* con = i ? nodeTemplate.mOutputNames[slotIndex] : nodeTemplate.mInputNames[slotIndex];//node.mOutputs[slot_idx] : node->mInputs[slot_idx];
-            /*if (!delegate->IsIOPinned(nodeIndex, slot_idx, i == 1))
+            if (!delegate->IsIOPinned(nodeIndex, slot_idx, i == 1))
             {
                
-            }*/
+            }
             continue;
 
             ImVec2 p = offset + (i ? GetOutputSlotPos(delegate, node, slotIndex, factor) : GetInputSlotPos(delegate, node, slotIndex, factor));
@@ -523,14 +525,15 @@ static bool DrawNode(ImDrawList* drawList,
             drawList->AddTriangle(pts[0], pts[1], pts[2], 0xFF000000, 2.f);
         }
     }
+    */
 
     ImGui::SetCursorScreenPos(nodeRectangleMin);
     ImGui::InvisibleButton("node", nodeSize);
     // must be called right after creating the control we want to be able to move
-    bool node_moving_active = ImGui::IsItemActive();
+    bool nodeMovingActive = ImGui::IsItemActive();
 
     // Save the size of what we have emitted and whether any of the widgets are being used
-    bool node_widgets_active = (!old_any_active && ImGui::IsAnyItemActive());
+    bool nodeWidgetsActive = (!old_any_active && ImGui::IsAnyItemActive());
     ImVec2 nodeRectangleMax = nodeRectangleMin + nodeSize;
 
     bool nodeHovered = false;
@@ -541,7 +544,7 @@ static bool DrawNode(ImDrawList* drawList,
 
     if (ImGui::IsWindowFocused())
     {
-        if (node_widgets_active || node_moving_active)
+        if (nodeWidgetsActive || nodeMovingActive)
         {
             if (!node.mSelected)
             {
@@ -557,7 +560,7 @@ static bool DrawNode(ImDrawList* drawList,
             }
         }
     }
-    if (node_moving_active && io.MouseDown[0] && nodeHovered)
+    if (nodeMovingActive && io.MouseDown[0] && nodeHovered)
     {
         if (nodeOperation != NO_MovingNodes)
         {
@@ -666,8 +669,8 @@ void Show(Delegate& delegate, const Options& options, ViewState& viewState, bool
     ImRect regionRect(windowPos, windowPos + canvasSize);
 
     HandleZoomScroll(regionRect, viewState, options);
-    ImVec2 offset = ImGui::GetCursorScreenPos() + viewState.position * viewState.factor;
-    captureOffset = scrollRegionLocalPos + viewState.position * viewState.factor + ImVec2(10.f, 0.f);
+    ImVec2 offset = ImGui::GetCursorScreenPos() + viewState.mPosition * viewState.mFactor;
+    captureOffset = scrollRegionLocalPos + viewState.mPosition * viewState.mFactor + ImVec2(10.f, 0.f);
 
     ImGui::SetCursorPos(windowPos);
     ImGui::BeginGroup();
@@ -689,7 +692,7 @@ void Show(Delegate& delegate, const Options& options, ViewState& viewState, bool
     ImDrawList* drawList = ImGui::GetWindowDrawList();
 
     // Background or Display grid
-    if (1) //!delegate->RenderBackground())
+    if (options.mRenderGrid)
     {
         DrawGrid(drawList, windowPos, viewState, canvasSize, options.mGridColor, options.mGridSize);
     }
@@ -700,7 +703,7 @@ void Show(Delegate& delegate, const Options& options, ViewState& viewState, bool
         // Display links
         drawList->ChannelsSplit(3);
         drawList->ChannelsSetCurrent(1); // Background
-        DisplayLinks(delegate, drawList, offset, viewState.factor, regionRect, hoveredNode, options);
+        DisplayLinks(delegate, drawList, offset, viewState.mFactor, regionRect, hoveredNode, options);
 
         // edit node link
         if (nodeOperation == NO_EditingLink)
@@ -727,7 +730,7 @@ void Show(Delegate& delegate, const Options& options, ViewState& viewState, bool
                 }
 
                 // node view clipping
-                ImRect nodeRect = GetNodeRect(node, viewState.factor);
+                ImRect nodeRect = GetNodeRect(node, viewState.mFactor);
                 nodeRect.Min += offset;
                 nodeRect.Max += offset;
                 if (!regionRect.Overlaps(nodeRect))
@@ -740,12 +743,12 @@ void Show(Delegate& delegate, const Options& options, ViewState& viewState, bool
                 // Display node contents first
                 // drawList->ChannelsSetCurrent(i+1); // channel 2 = Foreground channel 1 = background
 
-                bool overInput = HandleConnections(drawList, nodeIndex, offset, viewState.factor, delegate, options, false);
+                bool overInput = HandleConnections(drawList, nodeIndex, offset, viewState.mFactor, delegate, options, false);
 
-                if (DrawNode(drawList, nodeIndex, offset, viewState.factor, delegate, overInput, options))
+                if (DrawNode(drawList, nodeIndex, offset, viewState.mFactor, delegate, overInput, options))
                     hoveredNode = nodeIndex;
 
-                HandleConnections(drawList, nodeIndex, offset, viewState.factor, delegate, options, true);
+                HandleConnections(drawList, nodeIndex, offset, viewState.mFactor, delegate, options, true);
 
                 ImGui::PopID();
             }
@@ -756,7 +759,7 @@ void Show(Delegate& delegate, const Options& options, ViewState& viewState, bool
         {
             if (ImGui::IsMouseDragging(0, 1))
             {
-                ImVec2 delta = io.MouseDelta / viewState.factor;
+                ImVec2 delta = io.MouseDelta / viewState.mFactor;
                 if (fabsf(delta.x) >= 1.f || fabsf(delta.y) >= 1.f)
                 {
                     delegate.MoveSelectedNodes(delta);
@@ -767,7 +770,7 @@ void Show(Delegate& delegate, const Options& options, ViewState& viewState, bool
         drawList->ChannelsSetCurrent(0);
 
         // quad selection
-        HandleQuadSelection(delegate, drawList, offset, viewState.factor, regionRect, options);
+        HandleQuadSelection(delegate, drawList, offset, viewState.mFactor, regionRect, options);
 
         drawList->ChannelsMerge();
 
@@ -784,6 +787,16 @@ void Show(Delegate& delegate, const Options& options, ViewState& viewState, bool
             nodeOperation = NO_None;
         }
 
+        // right click
+        if (nodeOperation == NO_None && regionRect.Contains(io.MousePos) &&
+                (ImGui::IsMouseClicked(1) /*|| (ImGui::IsWindowFocused() && ImGui::IsKeyPressedMap(ImGuiKey_Tab))*/))
+        {
+            NodeIndex nodeIndex = hoveredNode;
+            SlotIndex slotIndex = -1;
+            LinkIndex linkIndex = -1;
+            delegate.RightClick(nodeIndex, slotIndex, linkIndex);
+        }
+
         // Scrolling
         if (ImGui::IsWindowHovered() && !ImGui::IsAnyItemActive() && io.MouseClicked[2] && nodeOperation == NO_None)
         {
@@ -791,7 +804,7 @@ void Show(Delegate& delegate, const Options& options, ViewState& viewState, bool
         }
         if (nodeOperation == NO_PanView)
         {
-            viewState.position += io.MouseDelta / viewState.factor;
+            viewState.mPosition += io.MouseDelta / viewState.mFactor;
         }
     }
 
@@ -801,6 +814,65 @@ void Show(Delegate& delegate, const Options& options, ViewState& viewState, bool
     ImGui::PopStyleVar(2);
     ImGui::EndGroup();
     ImGui::PopStyleVar(3);
+}
+
+bool EditOptions(Options& options)
+{
+    bool updated = false;
+    if (ImGui::CollapsingHeader("Colors", nullptr))
+    {
+        ImColor backgroundColor(options.mBackgroundColor);
+        ImColor gridColor(options.mGridColor);
+        ImColor selectedNodeBorderColor(options.mSelectedNodeBorderColor);
+        ImColor nodeBorderColor(options.mNodeBorderColor);
+        ImColor quadSelection(options.mQuadSelection);
+        ImColor quadSelectionBorder(options.mQuadSelectionBorder);
+        ImColor defaultSlotColor(options.mDefaultSlotColor);
+
+        updated |= ImGui::ColorEdit4("Background", (float*)&backgroundColor);
+        updated |= ImGui::ColorEdit4("Grid", (float*)&gridColor);
+        updated |= ImGui::ColorEdit4("Selected Node Border", (float*)&selectedNodeBorderColor);
+        updated |= ImGui::ColorEdit4("Node Border", (float*)&nodeBorderColor);
+        updated |= ImGui::ColorEdit4("Quad Selection", (float*)&quadSelection);
+        updated |= ImGui::ColorEdit4("Quad Selection Border", (float*)&quadSelectionBorder);
+        updated |= ImGui::ColorEdit4("Default Slot", (float*)&defaultSlotColor);
+
+        options.mBackgroundColor = backgroundColor;
+        options.mGridColor = gridColor;
+        options.mSelectedNodeBorderColor = selectedNodeBorderColor;
+        options.mNodeBorderColor = nodeBorderColor;
+        options.mQuadSelection = quadSelection;
+        options.mQuadSelectionBorder = quadSelectionBorder;
+        options.mDefaultSlotColor = defaultSlotColor;
+    }
+
+    if (ImGui::CollapsingHeader("Options", nullptr))
+    {
+        updated |= ImGui::InputFloat("Line Thickness", &options.mLineThickness);
+        updated |= ImGui::InputFloat("Grid Size", &options.mGridSize);
+        updated |= ImGui::InputFloat("Rounding", &options.mRounding);
+        updated |= ImGui::InputFloat("Zoom Ratio", &options.mZoomRatio);
+        updated |= ImGui::InputFloat("Zoom Lerp Factor", &options.mZoomLerpFactor);
+        updated |= ImGui::InputFloat("Border Selection Thickness", &options.mBorderSelectionThickness);
+        updated |= ImGui::InputFloat("Border Thickness", &options.mBorderThickness);
+        updated |= ImGui::InputFloat("Slot Radius", &options.mNodeSlotRadius);
+        updated |= ImGui::InputFloat("Slot Hover Factor", &options.mNodeSlotHoverFactor);
+        
+        if (ImGui::RadioButton("Curved Links", options.mDisplayLinksAsCurves))
+        {
+            options.mDisplayLinksAsCurves = !options.mDisplayLinksAsCurves;
+            updated = true;
+        }
+        if (ImGui::RadioButton("Straight Links", !options.mDisplayLinksAsCurves))
+        {
+            options.mDisplayLinksAsCurves = !options.mDisplayLinksAsCurves;
+            updated = true;
+        }
+
+        updated |= ImGui::Checkbox("Allow Quad Selection", &options.mAllowQuadSelection);
+        updated |= ImGui::Checkbox("Render Grid", &options.mRenderGrid);
+    }
+    return updated;
 }
 
 } // namespace

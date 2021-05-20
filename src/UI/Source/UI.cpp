@@ -18,10 +18,9 @@ struct Array
 
 template <typename T, typename ... U> Array(T, U...) -> Array<T, 1 + sizeof...(U)>;
 
-
 struct GraphEditorDelegate : public GraphEditor::Delegate
 {
-    bool AllowedLink(GraphEditor::NodeIndex from, GraphEditor::NodeIndex to) const override
+    bool AllowedLink(GraphEditor::NodeIndex from, GraphEditor::NodeIndex to) override
     {
         return true;
     }
@@ -44,11 +43,15 @@ struct GraphEditorDelegate : public GraphEditor::Delegate
         }
     }
     
+    virtual void RightClick(GraphEditor::NodeIndex nodeIndex, GraphEditor::SlotIndex slotIndex, GraphEditor::LinkIndex linkIndex) override
+    {
+    }
+    
     void AddLink(GraphEditor::NodeIndex inputNodeIndex, GraphEditor::SlotIndex inputSlotIndex, GraphEditor::NodeIndex outputNodeIndex, GraphEditor::SlotIndex outputSlotIndex) override
     {
         mLinks.push_back({inputNodeIndex, inputSlotIndex, outputNodeIndex, outputSlotIndex});
     }
-    
+
     void DelLink(GraphEditor::LinkIndex linkIndex) override
     {
         mLinks.erase(mLinks.begin() + linkIndex);
@@ -56,19 +59,19 @@ struct GraphEditorDelegate : public GraphEditor::Delegate
 
     const size_t GetTemplateCount() override
     {
-        return mTemplates.size();
+        return sizeof(mTemplates) / sizeof(GraphEditor::Template);
     }
-    
+
     const GraphEditor::Template GetTemplate(GraphEditor::TemplateIndex index) override
     {
         return mTemplates[index];
     }
-    
+
     const size_t GetNodeCount() override
     {
         return mNodes.size();
     }
-    
+
     const GraphEditor::Node GetNode(GraphEditor::NodeIndex index) override
     {
         const auto& myNode = mNodes[index];
@@ -80,27 +83,39 @@ struct GraphEditorDelegate : public GraphEditor::Delegate
             myNode.mSelected
         };
     }
-    
+
     const size_t GetLinkCount() override
     {
         return mLinks.size();
     }
-    
+
     const GraphEditor::Link GetLink(GraphEditor::LinkIndex index) override
     {
         return mLinks[index];
     }
-    
+
     // Graph datas
-    
-    static const inline Array<GraphEditor::Template, 1> mTemplates = {
+    static const inline GraphEditor::Template mTemplates[] = {
         {
             IM_COL32(160, 160, 180, 255),
             IM_COL32(100, 100, 140, 255),
             1,
             Array{"MyInput"},
+            nullptr,
             2,
-            Array{"MyOutput0", "MyOuput1"}
+            Array{"MyOutput0", "MyOuput1"},
+            nullptr
+        },
+
+        {
+            IM_COL32(180, 160, 160, 255),
+            IM_COL32(140, 100, 100, 255),
+            3,
+            nullptr,
+            Array{ IM_COL32(200,100,100,255), IM_COL32(100,200,100,255), IM_COL32(100,100,200,255) },
+            1,
+            Array{"MyOutput0"},
+            Array{ IM_COL32(200,200,200,255)}
         }
     };
 
@@ -111,7 +126,7 @@ struct GraphEditorDelegate : public GraphEditor::Delegate
         float x, y;
         bool mSelected;
     };
-    
+
     std::vector<Node> mNodes = {
         {
             "My Node 0",
@@ -129,14 +144,13 @@ struct GraphEditorDelegate : public GraphEditor::Delegate
 
         {
             "My Node 2",
-            0,
+            1,
             360, 360,
             false
         }
     };
 
-    std::vector<GraphEditor::Link> mLinks = { {0,0,1,0} };
-     
+    std::vector<GraphEditor::Link> mLinks = { {0, 0, 1, 0} };
 };
 
 static GraphEditor::Options options;
@@ -166,4 +180,9 @@ void FitNodes()
 void FitSelectedNodes()
 {
     GraphEditor::FitNodes(delegate, viewState, true);
+}
+
+void EditOptions()
+{
+    EditOptions(options);
 }

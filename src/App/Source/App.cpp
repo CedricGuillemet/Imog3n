@@ -151,6 +151,7 @@ public:
             {
                 FitSelectedNodes();
             }
+            EditOptions();
 			ImGui::End();
 
 			ShowNodeEditor();
