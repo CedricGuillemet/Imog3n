@@ -325,7 +325,9 @@ static bool HandleConnections(ImDrawList* drawList,
                        const float factor,
                        Delegate& delegate,
                        const Options& options,
-                       bool bDrawOnly)
+                       bool bDrawOnly,
+                       SlotIndex& inputSlotOver,
+                       SlotIndex& outputSlotOver)
 {
     static NodeIndex editingNodeIndex;
     static SlotIndex editingSlotIndex;
@@ -337,6 +339,8 @@ static bool HandleConnections(ImDrawList* drawList,
 
     size_t InputsCount = nodeTemplate.mInputCount;
     size_t OutputsCount = nodeTemplate.mOutputCount;
+    inputSlotOver = -1;
+    outputSlotOver = -1;
 
     // draw/use inputs/outputs
     bool hoverSlot = false;
@@ -374,6 +378,15 @@ static bool HandleConnections(ImDrawList* drawList,
                 closestConn = slotIndex;
                 closestTextPos = textPos;
                 closestPos = p;
+                
+                if (i)
+                {
+                    outputSlotOver = slotIndex;
+                }
+                else
+                {
+                    inputSlotOver = slotIndex;
+                }
             }
             else
             {
@@ -571,7 +584,7 @@ static bool DrawNode(ImDrawList* drawList,
     const bool currentSelectedNode = node.mSelected;
 
 
-    ImU32 node_bg_color = nodeTemplate.mBackgroundColor + (nodeHovered?0x191919:0);
+    ImU32 node_bg_color = nodeHovered ? nodeTemplate.mBackgroundColorOver : nodeTemplate.mBackgroundColor;
 
     drawList->AddRect(nodeRectangleMin,
                       nodeRectangleMax,
@@ -622,6 +635,11 @@ static bool DrawNode(ImDrawList* drawList,
     drawList->AddText(nodeRectangleMin + ImVec2(2, 2), IM_COL32(0, 0, 0, 255), node.mName);
     drawList->PopClipRect();
 
+    ImRect customDrawRect(nodeRectangleMin + ImVec2(options.mRounding, 20 + options.mRounding), nodeRectangleMax - ImVec2(options.mRounding, options.mRounding));
+    if (customDrawRect.Max.y > customDrawRect.Min.y && customDrawRect.Max.x > customDrawRect.Min.x)
+    {
+        delegate.CustomDraw(drawList, customDrawRect, nodeIndex);
+    }
 /*
     const ImTextureID bmpInfo = (ImTextureID)(uint64_t)delegate->GetBitmapInfo(nodeIndex).idx;
     if (bmpInfo)
@@ -663,14 +681,14 @@ void Show(Delegate& delegate, const Options& options, ViewState& viewState, bool
     ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.f);
 
     const ImVec2 windowPos = ImGui::GetCursorScreenPos();
-    const ImVec2 canvasSize = ImGui::GetWindowSize();
-    const ImVec2 scrollRegionLocalPos(0, 50);
+    const ImVec2 canvasSize = ImGui::GetContentRegionAvail();
+    const ImVec2 scrollRegionLocalPos(0, 0);
 
     ImRect regionRect(windowPos, windowPos + canvasSize);
 
     HandleZoomScroll(regionRect, viewState, options);
     ImVec2 offset = ImGui::GetCursorScreenPos() + viewState.mPosition * viewState.mFactor;
-    captureOffset = scrollRegionLocalPos + viewState.mPosition * viewState.mFactor + ImVec2(10.f, 0.f);
+    captureOffset = viewState.mPosition * viewState.mFactor;
 
     ImGui::SetCursorPos(windowPos);
     ImGui::BeginGroup();
@@ -703,6 +721,14 @@ void Show(Delegate& delegate, const Options& options, ViewState& viewState, bool
         // Display links
         drawList->ChannelsSplit(3);
         drawList->ChannelsSetCurrent(1); // Background
+
+        // Focus rectangle
+        if (ImGui::IsWindowFocused())
+        {
+            drawList->AddRect(regionRect.Min, regionRect.Max, options.mFrameFocus);
+        }
+        
+        // Links
         DisplayLinks(delegate, drawList, offset, viewState.mFactor, regionRect, hoveredNode, options);
 
         // edit node link
@@ -717,6 +743,10 @@ void Show(Delegate& delegate, const Options& options, ViewState& viewState, bool
         drawList->PushClipRect(regionRect.Min, regionRect.Max, true);
         hoveredNode = -1;
         
+        SlotIndex inputSlotOver = -1;
+        SlotIndex outputSlotOver = -1;
+        NodeIndex nodeOver = -1;
+
         const auto nodeCount = delegate.GetNodeCount();
         for (int i = 0; i < 2; i++)
         {
@@ -739,16 +769,45 @@ void Show(Delegate& delegate, const Options& options, ViewState& viewState, bool
                 }
 
                 ImGui::PushID((int)nodeIndex);
+                SlotIndex inputSlot = -1;
+                SlotIndex outputSlot = -1;
 
-                // Display node contents first
-                // drawList->ChannelsSetCurrent(i+1); // channel 2 = Foreground channel 1 = background
+                bool overInput = HandleConnections(drawList, nodeIndex, offset, viewState.mFactor, delegate, options, false, inputSlot, outputSlot);
 
-                bool overInput = HandleConnections(drawList, nodeIndex, offset, viewState.mFactor, delegate, options, false);
+                // shadow
+                /*
+                ImVec2 shadowOffset = ImVec2(30, 30);
+                ImVec2 shadowPivot = (nodeRect.Min + nodeRect.Max) /2.f;
+                ImVec2 shadowPointMiddle = shadowPivot + shadowOffset;
+                ImVec2 shadowPointTop = ImVec2(shadowPivot.x, nodeRect.Min.y) + shadowOffset;
+                ImVec2 shadowPointBottom = ImVec2(shadowPivot.x, nodeRect.Max.y) + shadowOffset;
+                ImVec2 shadowPointLeft = ImVec2(nodeRect.Min.x, shadowPivot.y) + shadowOffset;
+                ImVec2 shadowPointRight = ImVec2(nodeRect.Max.x, shadowPivot.y) + shadowOffset;
 
+                // top left
+                drawList->AddRectFilledMultiColor(nodeRect.Min + shadowOffset, shadowPointMiddle, IM_COL32(0 ,0, 0, 0), IM_COL32(0,0,0,0), IM_COL32(0, 0, 0, 255), IM_COL32(0, 0, 0, 0));
+
+                // top right
+                drawList->AddRectFilledMultiColor(shadowPointTop, shadowPointRight, IM_COL32(0 ,0, 0, 0), IM_COL32(0,0,0,0), IM_COL32(0, 0, 0, 0), IM_COL32(0, 0, 0, 255));
+
+                // bottom left
+                drawList->AddRectFilledMultiColor(shadowPointLeft, shadowPointBottom, IM_COL32(0 ,0, 0, 0), IM_COL32(0, 0, 0, 255), IM_COL32(0, 0, 0, 0), IM_COL32(0,0,0,0));
+
+                // bottom right
+                drawList->AddRectFilledMultiColor(shadowPointMiddle, nodeRect.Max + shadowOffset, IM_COL32(0, 0, 0, 255), IM_COL32(0 ,0, 0, 0), IM_COL32(0,0,0,0), IM_COL32(0, 0, 0, 0));
+                */
                 if (DrawNode(drawList, nodeIndex, offset, viewState.mFactor, delegate, overInput, options))
+                {
                     hoveredNode = nodeIndex;
+                }
 
-                HandleConnections(drawList, nodeIndex, offset, viewState.mFactor, delegate, options, true);
+                HandleConnections(drawList, nodeIndex, offset, viewState.mFactor, delegate, options, true, inputSlot, outputSlot);
+                if (inputSlot != -1 || outputSlot != -1)
+                {
+                    inputSlotOver = inputSlot;
+                    outputSlotOver = outputSlot;
+                    nodeOver = nodeIndex;
+                }
 
                 ImGui::PopID();
             }
@@ -791,10 +850,7 @@ void Show(Delegate& delegate, const Options& options, ViewState& viewState, bool
         if (nodeOperation == NO_None && regionRect.Contains(io.MousePos) &&
                 (ImGui::IsMouseClicked(1) /*|| (ImGui::IsWindowFocused() && ImGui::IsKeyPressedMap(ImGuiKey_Tab))*/))
         {
-            NodeIndex nodeIndex = hoveredNode;
-            SlotIndex slotIndex = -1;
-            LinkIndex linkIndex = -1;
-            delegate.RightClick(nodeIndex, slotIndex, linkIndex);
+            delegate.RightClick(nodeOver, inputSlotOver, outputSlotOver);
         }
 
         // Scrolling
@@ -828,6 +884,7 @@ bool EditOptions(Options& options)
         ImColor quadSelection(options.mQuadSelection);
         ImColor quadSelectionBorder(options.mQuadSelectionBorder);
         ImColor defaultSlotColor(options.mDefaultSlotColor);
+        ImColor frameFocus(options.mFrameFocus);
 
         updated |= ImGui::ColorEdit4("Background", (float*)&backgroundColor);
         updated |= ImGui::ColorEdit4("Grid", (float*)&gridColor);
@@ -836,6 +893,7 @@ bool EditOptions(Options& options)
         updated |= ImGui::ColorEdit4("Quad Selection", (float*)&quadSelection);
         updated |= ImGui::ColorEdit4("Quad Selection Border", (float*)&quadSelectionBorder);
         updated |= ImGui::ColorEdit4("Default Slot", (float*)&defaultSlotColor);
+        updated |= ImGui::ColorEdit4("Frame when has focus", (float*)&frameFocus);
 
         options.mBackgroundColor = backgroundColor;
         options.mGridColor = gridColor;
@@ -844,6 +902,7 @@ bool EditOptions(Options& options)
         options.mQuadSelection = quadSelection;
         options.mQuadSelectionBorder = quadSelectionBorder;
         options.mDefaultSlotColor = defaultSlotColor;
+        options.mFrameFocus = frameFocus;
     }
 
     if (ImGui::CollapsingHeader("Options", nullptr))

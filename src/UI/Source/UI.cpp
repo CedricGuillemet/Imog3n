@@ -43,7 +43,7 @@ struct GraphEditorDelegate : public GraphEditor::Delegate
         }
     }
     
-    virtual void RightClick(GraphEditor::NodeIndex nodeIndex, GraphEditor::SlotIndex slotIndex, GraphEditor::LinkIndex linkIndex) override
+    virtual void RightClick(GraphEditor::NodeIndex nodeIndex, GraphEditor::SlotIndex slotIndexInput, GraphEditor::SlotIndex slotIndexOutput) override
     {
     }
     
@@ -57,6 +57,12 @@ struct GraphEditorDelegate : public GraphEditor::Delegate
         mLinks.erase(mLinks.begin() + linkIndex);
     }
 
+    void CustomDraw(ImDrawList* drawList, ImRect rectangle, GraphEditor::NodeIndex nodeIndex) override
+    {
+        drawList->AddLine(rectangle.Min, rectangle.Max, IM_COL32(0, 0, 0, 255));
+        drawList->AddText(rectangle.Min, IM_COL32(255, 128, 64, 255), "Draw");
+    }
+    
     const size_t GetTemplateCount() override
     {
         return sizeof(mTemplates) / sizeof(GraphEditor::Template);
@@ -99,6 +105,7 @@ struct GraphEditorDelegate : public GraphEditor::Delegate
         {
             IM_COL32(160, 160, 180, 255),
             IM_COL32(100, 100, 140, 255),
+            IM_COL32(110, 110, 150, 255),
             1,
             Array{"MyInput"},
             nullptr,
@@ -110,6 +117,7 @@ struct GraphEditorDelegate : public GraphEditor::Delegate
         {
             IM_COL32(180, 160, 160, 255),
             IM_COL32(140, 100, 100, 255),
+            IM_COL32(150, 110, 110, 255),
             3,
             nullptr,
             Array{ IM_COL32(200,100,100,255), IM_COL32(100,200,100,255), IM_COL32(100,100,200,255) },

@@ -40,15 +40,11 @@
  | selection + colors
  | in / out size + hovered size
  | options edit
+ | right click callback(over node, over link, over nothing)
+ | inside callback
  
  * focus display
- * inside callback
- 
- * right click callback(over node, over link, over nothing)
  * function fit2see all // FitNodes
- * comment .h
- * shadows
- * delete node
 */
 namespace GraphEditor {
 
@@ -67,6 +63,7 @@ struct Options
     ImU32 mQuadSelection{ IM_COL32(255, 32, 32, 64) }; // quad selection inside color
     ImU32 mQuadSelectionBorder{ IM_COL32(255, 32, 32, 255) }; // quad selection border color
     ImU32 mDefaultSlotColor{ IM_COL32(128, 128, 128, 255) }; // when no color is provided in node template, use this value
+    ImU32 mFrameFocus{ IM_COL32(64, 128, 255, 255) }; // rectangle border when graph editor has focus
     float mLineThickness{ 5 }; // links width in pixels when zoom value is 1
     float mGridSize{ 64.f }; // background grid size in pixels when zoom value is 1
     float mRounding{ 3.f }; // rounding at node corners
@@ -93,6 +90,7 @@ struct Template
 {
     ImU32 mHeaderColor;
     ImU32 mBackgroundColor;
+    ImU32 mBackgroundColorOver;
     ImU8 mInputCount;
     const char** mInputNames; // can be nullptr. No text displayed.
     ImU32* mInputColors; // can be nullptr, default slot color will be used.
@@ -127,11 +125,12 @@ struct Delegate
     virtual void AddLink(NodeIndex inputNodeIndex, SlotIndex inputSlotIndex, NodeIndex outputNodeIndex, SlotIndex outputSlotIndex) = 0;
     virtual void DelLink(LinkIndex linkIndex) = 0;
     
+    // user is responsible for clipping
+    virtual void CustomDraw(ImDrawList* drawList, ImRect rectangle, NodeIndex nodeIndex) = 0;
+    
     // use mouse position to open context menu
     // if nodeIndex != -1, right click happens on the specified node
-    // if linkIndex != -1, right click happens on the specified link
-    // if nodeIndex != -1 and slotIndex != -1, right click happens on the specified slot of node
-    virtual void RightClick(NodeIndex nodeIndex, SlotIndex slotIndex, LinkIndex linkIndex) = 0;
+    virtual void RightClick(NodeIndex nodeIndex, SlotIndex slotIndexInput, SlotIndex slotIndexOutput) = 0;
 
     virtual const size_t GetTemplateCount() = 0;
     virtual const Template GetTemplate(TemplateIndex index) = 0;
