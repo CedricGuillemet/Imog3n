@@ -43,7 +43,7 @@
  | right click callback(over node, over link, over nothing)
  | inside callback
  
- * focus display
+ | focus display
  * function fit2see all // FitNodes
 */
 namespace GraphEditor {
@@ -52,6 +52,15 @@ typedef size_t NodeIndex;
 typedef size_t SlotIndex;
 typedef size_t LinkIndex;
 typedef size_t TemplateIndex;
+
+// Force the view to be respositionned and zoom to fit nodes with Show function.
+// Parameter value will be changed to Fit_None by the function.
+enum FitOnScreen
+{
+    Fit_None,
+    Fit_AllNodes,
+    Fit_SelectedNodes
+};
 
 // Display options and colors
 struct Options
@@ -142,10 +151,9 @@ struct Delegate
     virtual const Link GetLink(LinkIndex index) = 0;
 };
 
-void Show(Delegate& delegate, const Options& options, ViewState& viewState, bool enabled);
+void Show(Delegate& delegate, const Options& options, ViewState& viewState, bool enabled, FitOnScreen* fit = nullptr);
 void GraphEditorClear();
 
-void FitNodes(Delegate& delegate, ViewState& viewState, bool selectedNodesOnly);
 bool EditOptions(Options& options);
 
 } // namespace

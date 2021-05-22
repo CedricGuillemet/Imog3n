@@ -139,21 +139,21 @@ struct GraphEditorDelegate : public GraphEditor::Delegate
         {
             "My Node 0",
             0,
-            60, 60,
+            0, 0,
             false
         },
 
         {
             "My Node 1",
             0,
-            360, 60,
+            400, 0,
             false
         },
 
         {
             "My Node 2",
             1,
-            360, 360,
+            400, 400,
             false
         }
     };
@@ -164,30 +164,28 @@ struct GraphEditorDelegate : public GraphEditor::Delegate
 static GraphEditor::Options options;
 static GraphEditorDelegate delegate;
 static GraphEditor::ViewState viewState;
+static GraphEditor::FitOnScreen fit = GraphEditor::Fit_None;
 
 void ShowNodeEditor()
 {
 
 	ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_FirstUseEver);
-	ImGui::SetNextWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
-	ImGui::Begin("NodeEditor"
-		, NULL
-		, 0
-	);
+	ImGui::SetNextWindowSize(ImVec2(800, 640), ImGuiCond_FirstUseEver);
+	ImGui::Begin("NodeEditor", NULL, 0);
 
-    GraphEditor::Show(delegate, options, viewState, true);
+    GraphEditor::Show(delegate, options, viewState, true, &fit);
 
 	ImGui::End();
 }
 
 void FitNodes()
 {
-    GraphEditor::FitNodes(delegate, viewState, false);
+    fit = GraphEditor::Fit_AllNodes;
 }
 
 void FitSelectedNodes()
 {
-    GraphEditor::FitNodes(delegate, viewState, true);
+    fit = GraphEditor::Fit_SelectedNodes;
 }
 
 void EditOptions()

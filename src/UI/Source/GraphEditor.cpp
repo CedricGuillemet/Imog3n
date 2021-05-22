@@ -113,7 +113,7 @@ void GraphEditorClear()
     nodeOperation = NO_None;
 }
 
-void FitNodes(Delegate& delegate, ViewState& viewState, bool selectedNodesOnly)
+static void FitNodes(Delegate& delegate, ViewState& viewState, const ImVec2 viewSize, bool selectedNodesOnly)
 {
     const size_t nodeCount = delegate.GetNodeCount();
 
@@ -122,15 +122,51 @@ void FitNodes(Delegate& delegate, ViewState& viewState, bool selectedNodesOnly)
         return;
     }
 
-    viewState.mPosition = delegate.GetNode(0).mRect.Min;
-    for (NodeIndex nodeIndex = 1; nodeIndex < nodeCount; nodeIndex++)
+    bool validNode = false;
+    ImVec2 min(FLT_MAX, FLT_MAX);
+    ImVec2 max(-FLT_MAX, -FLT_MAX);
+    for (NodeIndex nodeIndex = 0; nodeIndex < nodeCount; nodeIndex++)
     {
         const Node& node = delegate.GetNode(nodeIndex);
-        viewState.mPosition.x = std::min(viewState.mPosition.x, node.mRect.Min.x);
-        viewState.mPosition.y = std::min(viewState.mPosition.y, node.mRect.Min.y);
+        
+        if (selectedNodesOnly && !node.mSelected)
+        {
+            continue;
+        }
+        
+        min = ImMin(min, node.mRect.Min);
+        min = ImMin(min, node.mRect.Max);
+        max = ImMax(max, node.mRect.Min);
+        max = ImMax(max, node.mRect.Max);
+        validNode = true;
     }
-
-    viewState.mPosition = ImVec2(40, 40) - viewState.mPosition;
+    
+    if (!validNode)
+    {
+        return;
+    }
+    
+    //min -= ImVec2(5, 5);
+    //max += ImVec2(5, 5);
+    ImVec2 nodesSize = max - min;
+    
+    float viewRatio = viewSize.x / viewSize.y;
+    float nodesRatio = nodesSize.x / nodesSize.y;
+    
+    printf("%f %f %f %f %f %f\n", min.x, min.y, max.x, max.y, viewSize.x, viewSize.y);
+    
+    if (viewRatio > nodesRatio)
+    {
+        viewState.mFactor = viewState.mFactorTarget = viewSize.y / nodesSize.y;
+        viewState.mPosition.x = -(min.x - (viewSize.x - nodesSize.x) * 0.5f) * viewState.mFactorTarget;
+        viewState.mPosition.y = -min.y * viewState.mFactorTarget;
+    }
+    else
+    {
+        viewState.mFactor = viewState.mFactorTarget = viewSize.x / nodesSize.x;
+        viewState.mPosition.y = -(min.y - (viewSize.y - nodesSize.y) * 0.5f) * viewState.mFactorTarget;
+        viewState.mPosition.x = -min.x * viewState.mFactorTarget;
+    }
 }
 
 static void DisplayLinks(Delegate& delegate,
@@ -674,7 +710,7 @@ static bool DrawNode(ImDrawList* drawList,
     return nodeHovered;
 }
 
-void Show(Delegate& delegate, const Options& options, ViewState& viewState, bool enabled)
+void Show(Delegate& delegate, const Options& options, ViewState& viewState, bool enabled, FitOnScreen* fit)
 {
     ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 0.f);
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0.f, 0.f));
@@ -713,6 +749,12 @@ void Show(Delegate& delegate, const Options& options, ViewState& viewState, bool
     if (options.mRenderGrid)
     {
         DrawGrid(drawList, windowPos, viewState, canvasSize, options.mGridColor, options.mGridSize);
+    }
+    
+    // Fit view
+    if (fit && ((*fit == Fit_AllNodes) || (*fit == Fit_SelectedNodes)))
+    {
+        FitNodes(delegate, viewState, canvasSize, (*fit == Fit_SelectedNodes));
     }
 
     if (enabled)
@@ -870,6 +912,12 @@ void Show(Delegate& delegate, const Options& options, ViewState& viewState, bool
     ImGui::PopStyleVar(2);
     ImGui::EndGroup();
     ImGui::PopStyleVar(3);
+    
+    // change fit to none
+    if (fit)
+    {
+        *fit = Fit_None;
+    }
 }
 
 bool EditOptions(Options& options)
@@ -931,6 +979,7 @@ bool EditOptions(Options& options)
         updated |= ImGui::Checkbox("Allow Quad Selection", &options.mAllowQuadSelection);
         updated |= ImGui::Checkbox("Render Grid", &options.mRenderGrid);
     }
+
     return updated;
 }
 
