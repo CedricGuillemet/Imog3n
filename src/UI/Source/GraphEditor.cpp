@@ -146,27 +146,16 @@ static void FitNodes(Delegate& delegate, ViewState& viewState, const ImVec2 view
         return;
     }
     
-    //min -= ImVec2(5, 5);
-    //max += ImVec2(5, 5);
+    min -= viewSize * 0.05f;
+    max += viewSize * 0.05f;
     ImVec2 nodesSize = max - min;
+    ImVec2 nodeCenter = (max + min) * 0.5f;
     
-    float viewRatio = viewSize.x / viewSize.y;
-    float nodesRatio = nodesSize.x / nodesSize.y;
-    
-    printf("%f %f %f %f %f %f\n", min.x, min.y, max.x, max.y, viewSize.x, viewSize.y);
-    
-    if (viewRatio > nodesRatio)
-    {
-        viewState.mFactor = viewState.mFactorTarget = viewSize.y / nodesSize.y;
-        viewState.mPosition.x = -(min.x - (viewSize.x - nodesSize.x) * 0.5f) * viewState.mFactorTarget;
-        viewState.mPosition.y = -min.y * viewState.mFactorTarget;
-    }
-    else
-    {
-        viewState.mFactor = viewState.mFactorTarget = viewSize.x / nodesSize.x;
-        viewState.mPosition.y = -(min.y - (viewSize.y - nodesSize.y) * 0.5f) * viewState.mFactorTarget;
-        viewState.mPosition.x = -min.x * viewState.mFactorTarget;
-    }
+    float ratioY = viewSize.y / nodesSize.y;
+    float ratioX = viewSize.x / nodesSize.x;
+
+    viewState.mFactor = viewState.mFactorTarget = ImMin(ratioY, ratioX);
+    viewState.mPosition = ImVec2(-nodeCenter.x, -nodeCenter.y) + (viewSize * 0.5f) / viewState.mFactorTarget;
 }
 
 static void DisplayLinks(Delegate& delegate,
