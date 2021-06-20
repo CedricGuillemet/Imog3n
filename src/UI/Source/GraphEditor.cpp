@@ -34,7 +34,7 @@
 
 namespace GraphEditor {
 
-static inline float Distance(ImVec2& a, ImVec2& b)
+static inline float Distance(const ImVec2& a, const ImVec2& b)
 {
     return sqrtf((a.x - b.x) * (a.x - b.x) + (a.y - b.y) * (a.y - b.y));
 }
@@ -99,7 +99,7 @@ static void HandleZoomScroll(ImRect regionRect, ViewState& viewState, const Opti
     }
 
     ImVec2 mouseWPosPre = (io.MousePos - ImGui::GetCursorScreenPos()) / viewState.mFactor;
-    viewState.mFactorTarget = ImClamp(viewState.mFactorTarget, 0.2f, 3.f);
+    viewState.mFactorTarget = ImClamp(viewState.mFactorTarget, 0.2f, 1.f);
     viewState.mFactor = ImLerp(viewState.mFactor, viewState.mFactorTarget, options.mZoomLerpFactor);
     ImVec2 mouseWPosPost = (io.MousePos - ImGui::GetCursorScreenPos()) / viewState.mFactor;
     if (ImGui::IsMousePosValid())
@@ -154,7 +154,7 @@ static void FitNodes(Delegate& delegate, ViewState& viewState, const ImVec2 view
     float ratioY = viewSize.y / nodesSize.y;
     float ratioX = viewSize.x / nodesSize.x;
 
-    viewState.mFactor = viewState.mFactorTarget = ImMin(ratioY, ratioX);
+    viewState.mFactor = viewState.mFactorTarget = ImMin(ImMin(ratioY, ratioX), 1.f);
     viewState.mPosition = ImVec2(-nodeCenter.x, -nodeCenter.y) + (viewSize * 0.5f) / viewState.mFactorTarget;
 }
 
@@ -699,6 +699,15 @@ static bool DrawNode(ImDrawList* drawList,
     return nodeHovered;
 }
 
+void DrawMiniMap(ImDrawList* drawList, const Options& options, const ImVec2 canvasSize)
+{
+    if (Distance(options.mMinimap.Min, options.mMinimap.Max) <= FLT_EPSILON)
+    {
+        return;
+    }
+    drawList->AddRectFilled(options.mMinimap.Min * canvasSize, options.mMinimap.Max * canvasSize, IM_COL32(30, 30, 30, 160), 3, ImDrawFlags_RoundCornersAll);
+}
+
 void Show(Delegate& delegate, const Options& options, ViewState& viewState, bool enabled, FitOnScreen* fit)
 {
     ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 0.f);
@@ -843,6 +852,10 @@ void Show(Delegate& delegate, const Options& options, ViewState& viewState, bool
                 ImGui::PopID();
             }
         }
+        
+        // minimap
+        DrawMiniMap(drawList, options, canvasSize);
+        
         drawList->PopClipRect();
 
         if (nodeOperation == NO_MovingNodes)

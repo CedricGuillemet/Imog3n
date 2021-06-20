@@ -65,6 +65,7 @@ enum FitOnScreen
 // Display options and colors
 struct Options
 {
+    ImRect mMinimap{{0.75f, 0.8f, 1.f, 1.f}}; // rectangle coordinates of minimap
     ImU32 mBackgroundColor{ IM_COL32(80,80,100,255) }; // full background color
     ImU32 mGridColor{ IM_COL32(100, 100, 100, 40) }; // grid lines color
     ImU32 mSelectedNodeBorderColor{ IM_COL32(255, 130, 30, 255) }; // node border color when it's selected
