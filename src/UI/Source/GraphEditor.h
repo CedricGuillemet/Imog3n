@@ -65,8 +65,10 @@ enum FitOnScreen
 // Display options and colors
 struct Options
 {
-    ImU32 mBackgroundColor{ IM_COL32(80,80,100,255) }; // full background color
-    ImU32 mGridColor{ IM_COL32(100, 100, 100, 40) }; // grid lines color
+    ImRect mMinimap{{0.75f, 0.8f, 0.99f, 0.99f}}; // rectangle coordinates of minimap
+    ImU32 mBackgroundColor{ IM_COL32(40, 40, 40, 255) }; // full background color
+    ImU32 mGridColor{ IM_COL32(0, 0, 0, 60) }; // grid lines color
+    ImU32 mGridColor2{ IM_COL32(0, 0, 0, 160) }; // grid lines color every 10th
     ImU32 mSelectedNodeBorderColor{ IM_COL32(255, 130, 30, 255) }; // node border color when it's selected
     ImU32 mNodeBorderColor{ IM_COL32(100, 100, 100, 0) }; // node border color when it's not selected
     ImU32 mQuadSelection{ IM_COL32(255, 32, 32, 64) }; // quad selection inside color
@@ -83,6 +85,7 @@ struct Options
     float mNodeSlotRadius{ 8.f }; // circle radius for inputs and outputs
     float mNodeSlotHoverFactor{ 1.2f }; // increase size when hovering
     float mMinZoom{ 0.2f }, mMaxZoom { 1.1f };
+    float mSnap{ 5.f };
     bool mDisplayLinksAsCurves{ true }; // false is straight and 45deg lines
     bool mAllowQuadSelection{ true }; // multiple selection using drag and drop
     bool mRenderGrid{ true }; // grid or nothing

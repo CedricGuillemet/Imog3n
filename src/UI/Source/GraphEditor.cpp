@@ -34,7 +34,7 @@
 
 namespace GraphEditor {
 
-static inline float Distance(ImVec2& a, ImVec2& b)
+static inline float Distance(const ImVec2& a, const ImVec2& b)
 {
     return sqrtf((a.x - b.x) * (a.x - b.x) + (a.y - b.y) * (a.y - b.y));
 }
@@ -67,8 +67,8 @@ static ImRect GetNodeRect(const Node& node, float factor)
 }
 
 static ImVec2 editingNodeSource;
-bool editingInput = false;
-ImVec2 captureOffset;
+static bool editingInput = false;
+static ImVec2 captureOffset;
 
 enum NodeOperation
 {
@@ -79,7 +79,7 @@ enum NodeOperation
     NO_EditInput,
     NO_PanView,
 };
-NodeOperation nodeOperation = NO_None;
+static NodeOperation nodeOperation = NO_None;
 
 static void HandleZoomScroll(ImRect regionRect, ViewState& viewState, const Options& options)
 {
@@ -154,7 +154,7 @@ static void FitNodes(Delegate& delegate, ViewState& viewState, const ImVec2 view
     float ratioY = viewSize.y / nodesSize.y;
     float ratioX = viewSize.x / nodesSize.x;
 
-    viewState.mFactor = viewState.mFactorTarget = ImMin(ratioY, ratioX);
+    viewState.mFactor = viewState.mFactorTarget = ImMin(ImMin(ratioY, ratioX), 1.f);
     viewState.mPosition = ImVec2(-nodeCenter.x, -nodeCenter.y) + (viewSize * 0.5f) / viewState.mFactorTarget;
 }
 
@@ -508,13 +508,21 @@ static bool HandleConnections(ImDrawList* drawList,
     return hoverSlot;
 }
 
-static void DrawGrid(ImDrawList* drawList, ImVec2 windowPos, const ViewState& viewState, const ImVec2 canvasSize, ImU32 gridColor, float gridSize)
+static void DrawGrid(ImDrawList* drawList, ImVec2 windowPos, const ViewState& viewState, const ImVec2 canvasSize, ImU32 gridColor, ImU32 gridColor2, float gridSize)
 {
     float gridSpace = gridSize * viewState.mFactor;
-    for (float x = fmodf(viewState.mPosition.x * viewState.mFactor, gridSpace); x < canvasSize.x; x += gridSpace)
-        drawList->AddLine(ImVec2(x, 0.0f) + windowPos, ImVec2(x, canvasSize.y) + windowPos, gridColor);
-    for (float y = fmodf(viewState.mPosition.y * viewState.mFactor, gridSpace); y < canvasSize.y; y += gridSpace)
-        drawList->AddLine(ImVec2(0.0f, y) + windowPos, ImVec2(canvasSize.x, y) + windowPos, gridColor);
+    int divx = static_cast<int>(-viewState.mPosition.x / gridSize);
+    int divy = static_cast<int>(-viewState.mPosition.y / gridSize);
+    for (float x = fmodf(viewState.mPosition.x * viewState.mFactor, gridSpace); x < canvasSize.x; x += gridSpace, divx ++)
+    {
+        bool tenth = !(divx % 10);
+        drawList->AddLine(ImVec2(x, 0.0f) + windowPos, ImVec2(x, canvasSize.y) + windowPos, tenth ? gridColor2 : gridColor);
+    }
+    for (float y = fmodf(viewState.mPosition.y * viewState.mFactor, gridSpace); y < canvasSize.y; y += gridSpace, divy ++)
+    {
+        bool tenth = !(divy % 10);
+        drawList->AddLine(ImVec2(0.0f, y) + windowPos, ImVec2(canvasSize.x, y) + windowPos, tenth ? gridColor2 : gridColor);
+    }
 }
 
 // return true if node is hovered
@@ -699,6 +707,79 @@ static bool DrawNode(ImDrawList* drawList,
     return nodeHovered;
 }
 
+void DrawMiniMap(ImDrawList* drawList, Delegate& delegate, ViewState& viewState, const Options& options, const ImVec2 windowPos, const ImVec2 canvasSize)
+{
+    if (Distance(options.mMinimap.Min, options.mMinimap.Max) <= FLT_EPSILON)
+    {
+        return;
+    }
+
+    const size_t nodeCount = delegate.GetNodeCount();
+
+    if (!nodeCount)
+    {
+        return;
+    }
+
+    ImVec2 min(FLT_MAX, FLT_MAX);
+    ImVec2 max(-FLT_MAX, -FLT_MAX);
+    for (NodeIndex nodeIndex = 0; nodeIndex < nodeCount; nodeIndex++)
+    {
+        const Node& node = delegate.GetNode(nodeIndex);
+        min = ImMin(min, node.mRect.Min);
+        min = ImMin(min, node.mRect.Max);
+        max = ImMax(max, node.mRect.Min);
+        max = ImMax(max, node.mRect.Max);
+    }
+
+    // add view in world space
+    const ImVec2 viewMin(-viewState.mPosition.x, -viewState.mPosition.y);
+    const ImVec2 viewMax = viewMin + canvasSize / viewState.mFactor;
+
+    min = ImMin(min, viewMin);
+    max = ImMax(max, viewMax);
+
+    const ImVec2 nodesSize = max - min;
+    const ImVec2 middleWorld = (min + max) * 0.5f;
+    const ImVec2 minScreen = windowPos + options.mMinimap.Min * canvasSize;
+    const ImVec2 maxScreen = windowPos + options.mMinimap.Max * canvasSize;
+    const ImVec2 viewSize = maxScreen - minScreen;
+    const ImVec2 middleScreen = (minScreen + maxScreen) * 0.5f;
+    const float ratioY = viewSize.y / nodesSize.y;
+    const float ratioX = viewSize.x / nodesSize.x;
+    const float factor = ImMin(ImMin(ratioY, ratioX), 1.f);
+
+    drawList->AddRectFilled(minScreen, maxScreen, IM_COL32(30, 30, 30, 200), 3, ImDrawFlags_RoundCornersAll);
+
+
+    for (NodeIndex nodeIndex = 0; nodeIndex < nodeCount; nodeIndex++)
+    {
+        const Node& node = delegate.GetNode(nodeIndex);
+        const auto nodeTemplate = delegate.GetTemplate(node.mTemplateIndex);
+
+        ImRect rect = node.mRect;
+        rect.Min -= middleWorld;
+        rect.Min *= factor;
+        rect.Min += middleScreen;
+
+        rect.Max -= middleWorld;
+        rect.Max *= factor;
+        rect.Max += middleScreen;
+
+        drawList->AddRectFilled(rect.Min, rect.Max, nodeTemplate.mBackgroundColor, 1, ImDrawFlags_RoundCornersAll);
+        if (node.mSelected)
+        {
+            drawList->AddRect(rect.Min, rect.Max, options.mSelectedNodeBorderColor, 1, ImDrawFlags_RoundCornersAll);
+        }
+    }
+
+    // add view
+    ImVec2 viewMinScreen = (viewMin - middleWorld) * factor + middleScreen;
+    ImVec2 viewMaxScreen = (viewMax - middleWorld) * factor + middleScreen;
+    drawList->AddRectFilled(viewMinScreen, viewMaxScreen, IM_COL32(255, 255, 255, 32), 1, ImDrawFlags_RoundCornersAll);
+    drawList->AddRect(viewMinScreen, viewMaxScreen, IM_COL32(255, 255, 255, 128), 1, ImDrawFlags_RoundCornersAll);
+}
+
 void Show(Delegate& delegate, const Options& options, ViewState& viewState, bool enabled, FitOnScreen* fit)
 {
     ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 0.f);
@@ -734,10 +815,12 @@ void Show(Delegate& delegate, const Options& options, ViewState& viewState, bool
 
     ImDrawList* drawList = ImGui::GetWindowDrawList();
 
+    drawList->AddRectFilled(windowPos, windowPos + canvasSize, options.mBackgroundColor);
+
     // Background or Display grid
     if (options.mRenderGrid)
     {
-        DrawGrid(drawList, windowPos, viewState, canvasSize, options.mGridColor, options.mGridSize);
+        DrawGrid(drawList, windowPos, viewState, canvasSize, options.mGridColor, options.mGridColor2, options.mGridSize);
     }
     
     // Fit view
@@ -843,6 +926,10 @@ void Show(Delegate& delegate, const Options& options, ViewState& viewState, bool
                 ImGui::PopID();
             }
         }
+        
+        // minimap
+        DrawMiniMap(drawList, delegate, viewState, options, windowPos, canvasSize);
+        
         drawList->PopClipRect();
 
         if (nodeOperation == NO_MovingNodes)
@@ -953,6 +1040,8 @@ bool EditOptions(Options& options)
         updated |= ImGui::InputFloat("Border Thickness", &options.mBorderThickness);
         updated |= ImGui::InputFloat("Slot Radius", &options.mNodeSlotRadius);
         updated |= ImGui::InputFloat("Slot Hover Factor", &options.mNodeSlotHoverFactor);
+        updated |= ImGui::InputFloat2("Zoom min/max", &options.mMinZoom);
+        updated |= ImGui::InputFloat("Slot Hover Factor", &options.mSnap);
         
         if (ImGui::RadioButton("Curved Links", options.mDisplayLinksAsCurves))
         {
