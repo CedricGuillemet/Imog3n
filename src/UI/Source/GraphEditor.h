@@ -82,6 +82,7 @@ struct Options
     float mBorderThickness{ 6.f }; // thickness of selection border around nodes
     float mNodeSlotRadius{ 8.f }; // circle radius for inputs and outputs
     float mNodeSlotHoverFactor{ 1.2f }; // increase size when hovering
+    float mMinZoom{ 0.2f }, mMaxZoom { 1.1f };
     bool mDisplayLinksAsCurves{ true }; // false is straight and 45deg lines
     bool mAllowQuadSelection{ true }; // multiple selection using drag and drop
     bool mRenderGrid{ true }; // grid or nothing

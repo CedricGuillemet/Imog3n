@@ -99,7 +99,7 @@ static void HandleZoomScroll(ImRect regionRect, ViewState& viewState, const Opti
     }
 
     ImVec2 mouseWPosPre = (io.MousePos - ImGui::GetCursorScreenPos()) / viewState.mFactor;
-    viewState.mFactorTarget = ImClamp(viewState.mFactorTarget, 0.2f, 3.f);
+    viewState.mFactorTarget = ImClamp(viewState.mFactorTarget, options.mMinZoom, options.mMaxZoom);
     viewState.mFactor = ImLerp(viewState.mFactor, viewState.mFactorTarget, options.mZoomLerpFactor);
     ImVec2 mouseWPosPost = (io.MousePos - ImGui::GetCursorScreenPos()) / viewState.mFactor;
     if (ImGui::IsMousePosValid())
