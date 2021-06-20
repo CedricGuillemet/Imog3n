@@ -707,7 +707,7 @@ static bool DrawNode(ImDrawList* drawList,
     return nodeHovered;
 }
 
-void DrawMiniMap(ImDrawList* drawList, Delegate& delegate, ViewState& viewState, const Options& options, const ImVec2 windowPos, const ImVec2 canvasSize)
+bool DrawMiniMap(ImDrawList* drawList, Delegate& delegate, ViewState& viewState, const Options& options, const ImVec2 windowPos, const ImVec2 canvasSize)
 {
     if (Distance(options.mMinimap.Min, options.mMinimap.Max) <= FLT_EPSILON)
     {
@@ -723,22 +723,22 @@ void DrawMiniMap(ImDrawList* drawList, Delegate& delegate, ViewState& viewState,
 
     ImVec2 min(FLT_MAX, FLT_MAX);
     ImVec2 max(-FLT_MAX, -FLT_MAX);
+    const ImVec2 margin(50, 50);
     for (NodeIndex nodeIndex = 0; nodeIndex < nodeCount; nodeIndex++)
     {
         const Node& node = delegate.GetNode(nodeIndex);
-        min = ImMin(min, node.mRect.Min);
-        min = ImMin(min, node.mRect.Max);
-        max = ImMax(max, node.mRect.Min);
-        max = ImMax(max, node.mRect.Max);
+        min = ImMin(min, node.mRect.Min - margin);
+        min = ImMin(min, node.mRect.Max + margin);
+        max = ImMax(max, node.mRect.Min - margin);
+        max = ImMax(max, node.mRect.Max + margin);
     }
 
     // add view in world space
+    const ImVec2 worldSizeView = canvasSize / viewState.mFactor;
     const ImVec2 viewMin(-viewState.mPosition.x, -viewState.mPosition.y);
-    const ImVec2 viewMax = viewMin + canvasSize / viewState.mFactor;
-
+    const ImVec2 viewMax = viewMin + worldSizeView;
     min = ImMin(min, viewMin);
     max = ImMax(max, viewMax);
-
     const ImVec2 nodesSize = max - min;
     const ImVec2 middleWorld = (min + max) * 0.5f;
     const ImVec2 minScreen = windowPos + options.mMinimap.Min * canvasSize;
@@ -778,6 +778,39 @@ void DrawMiniMap(ImDrawList* drawList, Delegate& delegate, ViewState& viewState,
     ImVec2 viewMaxScreen = (viewMax - middleWorld) * factor + middleScreen;
     drawList->AddRectFilled(viewMinScreen, viewMaxScreen, IM_COL32(255, 255, 255, 32), 1, ImDrawFlags_RoundCornersAll);
     drawList->AddRect(viewMinScreen, viewMaxScreen, IM_COL32(255, 255, 255, 128), 1, ImDrawFlags_RoundCornersAll);
+    
+    ImGuiIO& io = ImGui::GetIO();
+    const bool mouseInMinimap = ImRect(minScreen, maxScreen).Contains(io.MousePos);
+    if (mouseInMinimap && io.MouseClicked[0])
+    {
+        const ImVec2 clickedRatio = (io.MousePos - minScreen) / viewSize;
+        const ImVec2 worldPosCenter = ImVec2(ImLerp(min.x, max.x, clickedRatio.x), ImLerp(min.y, max.y, clickedRatio.y));
+        
+        ImVec2 worldPosViewMin = worldPosCenter - worldSizeView * 0.5;
+        ImVec2 worldPosViewMax = worldPosCenter + worldSizeView * 0.5;
+        if (worldPosViewMin.x < min.x)
+        {
+            worldPosViewMin.x = min.x;
+            worldPosViewMax.x = worldPosViewMin.x + worldSizeView.x;
+        }
+        if (worldPosViewMin.y < min.y)
+        {
+            worldPosViewMin.y = min.y;
+            worldPosViewMax.y = worldPosViewMin.y + worldSizeView.y;
+        }
+        if (worldPosViewMax.x > max.x)
+        {
+            worldPosViewMax.x = max.x;
+            worldPosViewMin.x = worldPosViewMax.x - worldSizeView.x;
+        }
+        if (worldPosViewMax.y > max.y)
+        {
+            worldPosViewMax.y = max.y;
+            worldPosViewMin.y = worldPosViewMax.y - worldSizeView.y;
+        }
+        viewState.mPosition = ImVec2(-worldPosViewMin.x, -worldPosViewMin.y);
+    }
+    return mouseInMinimap;
 }
 
 void Show(Delegate& delegate, const Options& options, ViewState& viewState, bool enabled, FitOnScreen* fit)
@@ -928,7 +961,7 @@ void Show(Delegate& delegate, const Options& options, ViewState& viewState, bool
         }
         
         // minimap
-        DrawMiniMap(drawList, delegate, viewState, options, windowPos, canvasSize);
+        const bool inMinimap = DrawMiniMap(drawList, delegate, viewState, options, windowPos, canvasSize);
         
         drawList->PopClipRect();
 
