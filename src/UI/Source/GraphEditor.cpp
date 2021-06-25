@@ -352,7 +352,8 @@ static bool HandleConnections(ImDrawList* drawList,
                        const Options& options,
                        bool bDrawOnly,
                        SlotIndex& inputSlotOver,
-                       SlotIndex& outputSlotOver)
+                       SlotIndex& outputSlotOver,
+                       const bool inMinimap)
 {
     static NodeIndex editingNodeIndex;
     static SlotIndex editingSlotIndex;
@@ -396,8 +397,8 @@ static bool HandleConnections(ImDrawList* drawList,
                            -textSize.y / 2);
 
             ImRect nodeRect = GetNodeRect(node, factor);
-            if (overCon || (nodeRect.Contains(io.MousePos - offset) && closestConn == -1 &&
-                            (editingInput == (i != 0)) && nodeOperation == NO_EditingLink))
+            if (!inMinimap && (overCon || (nodeRect.Contains(io.MousePos - offset) && closestConn == -1 &&
+                            (editingInput == (i != 0)) && nodeOperation == NO_EditingLink)))
             {
                 closestDistance = distance;
                 closestConn = slotIndex;
@@ -532,7 +533,8 @@ static bool DrawNode(ImDrawList* drawList,
                      const float factor,
                      Delegate& delegate,
                      bool overInput,
-                     const Options& options)
+                     const Options& options,
+                     const bool inMinimap)
 {
     ImGuiIO& io = ImGui::GetIO();
     const auto node = delegate.GetNode(nodeIndex);
@@ -590,7 +592,7 @@ static bool DrawNode(ImDrawList* drawList,
 
     if (ImGui::IsWindowFocused())
     {
-        if (nodeWidgetsActive || nodeMovingActive)
+        if ((nodeWidgetsActive || nodeMovingActive) && !inMinimap)
         {
             if (!node.mSelected)
             {
@@ -606,7 +608,7 @@ static bool DrawNode(ImDrawList* drawList,
             }
         }
     }
-    if (nodeMovingActive && io.MouseDown[0] && nodeHovered)
+    if (nodeMovingActive && io.MouseDown[0] && nodeHovered && !inMinimap)
     {
         if (nodeOperation != NO_MovingNodes)
         {
@@ -711,14 +713,14 @@ bool DrawMiniMap(ImDrawList* drawList, Delegate& delegate, ViewState& viewState,
 {
     if (Distance(options.mMinimap.Min, options.mMinimap.Max) <= FLT_EPSILON)
     {
-        return;
+        return false;
     }
 
     const size_t nodeCount = delegate.GetNodeCount();
 
     if (!nodeCount)
     {
-        return;
+        return false;
     }
 
     ImVec2 min(FLT_MAX, FLT_MAX);
@@ -867,6 +869,12 @@ void Show(Delegate& delegate, const Options& options, ViewState& viewState, bool
         static NodeIndex hoveredNode = -1;
         // Display links
         drawList->ChannelsSplit(3);
+
+        // minimap
+        drawList->ChannelsSetCurrent(2); // minimap
+        const bool inMinimap = DrawMiniMap(drawList, delegate, viewState, options, windowPos, canvasSize);
+
+
         drawList->ChannelsSetCurrent(1); // Background
 
         // Focus rectangle
@@ -919,7 +927,7 @@ void Show(Delegate& delegate, const Options& options, ViewState& viewState, bool
                 SlotIndex inputSlot = -1;
                 SlotIndex outputSlot = -1;
 
-                bool overInput = HandleConnections(drawList, nodeIndex, offset, viewState.mFactor, delegate, options, false, inputSlot, outputSlot);
+                bool overInput = (!inMinimap) && HandleConnections(drawList, nodeIndex, offset, viewState.mFactor, delegate, options, false, inputSlot, outputSlot, inMinimap);
 
                 // shadow
                 /*
@@ -943,12 +951,12 @@ void Show(Delegate& delegate, const Options& options, ViewState& viewState, bool
                 // bottom right
                 drawList->AddRectFilledMultiColor(shadowPointMiddle, nodeRect.Max + shadowOffset, IM_COL32(0, 0, 0, 255), IM_COL32(0 ,0, 0, 0), IM_COL32(0,0,0,0), IM_COL32(0, 0, 0, 0));
                 */
-                if (DrawNode(drawList, nodeIndex, offset, viewState.mFactor, delegate, overInput, options))
+                if (DrawNode(drawList, nodeIndex, offset, viewState.mFactor, delegate, overInput, options, inMinimap))
                 {
                     hoveredNode = nodeIndex;
                 }
 
-                HandleConnections(drawList, nodeIndex, offset, viewState.mFactor, delegate, options, true, inputSlot, outputSlot);
+                HandleConnections(drawList, nodeIndex, offset, viewState.mFactor, delegate, options, true, inputSlot, outputSlot, inMinimap);
                 if (inputSlot != -1 || outputSlot != -1)
                 {
                     inputSlotOver = inputSlot;
@@ -960,8 +968,7 @@ void Show(Delegate& delegate, const Options& options, ViewState& viewState, bool
             }
         }
         
-        // minimap
-        const bool inMinimap = DrawMiniMap(drawList, delegate, viewState, options, windowPos, canvasSize);
+
         
         drawList->PopClipRect();
 
@@ -980,7 +987,10 @@ void Show(Delegate& delegate, const Options& options, ViewState& viewState, bool
         drawList->ChannelsSetCurrent(0);
 
         // quad selection
-        HandleQuadSelection(delegate, drawList, offset, viewState.mFactor, regionRect, options);
+        if (!inMinimap)
+        {
+            HandleQuadSelection(delegate, drawList, offset, viewState.mFactor, regionRect, options);
+        }
 
         drawList->ChannelsMerge();
 
@@ -998,7 +1008,7 @@ void Show(Delegate& delegate, const Options& options, ViewState& viewState, bool
         }
 
         // right click
-        if (nodeOperation == NO_None && regionRect.Contains(io.MousePos) &&
+        if (!inMinimap && nodeOperation == NO_None && regionRect.Contains(io.MousePos) &&
                 (ImGui::IsMouseClicked(1) /*|| (ImGui::IsWindowFocused() && ImGui::IsKeyPressedMap(ImGuiKey_Tab))*/))
         {
             delegate.RightClick(nodeOver, inputSlotOver, outputSlotOver);
