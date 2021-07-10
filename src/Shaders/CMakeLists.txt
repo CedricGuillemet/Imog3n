@@ -25,6 +25,7 @@ function (AddShaders extension type dx11Profile)
                 COMMAND "$<TARGET_FILE:shaderc>" -f ${SHADER} -o "${shaders_output}/${FILE_NAME}_${extension}_glsl.h" --platform asm.js -p 120 --type ${type} --bin2c ${FILE_NAME}_${extension}_glsl
                 COMMAND "$<TARGET_FILE:shaderc>" -f ${SHADER} -o "${shaders_output}/${FILE_NAME}_${extension}_mtl.h" --platform osx -p metal --type ${type} --bin2c ${FILE_NAME}_${extension}_mtl
                 COMMAND "$<TARGET_FILE:shaderc>" -f ${SHADER} -o "${shaders_output}/${FILE_NAME}_${extension}_spv.h" --platform linux -p spirv --type ${type} --bin2c ${FILE_NAME}_${extension}_spv
+                COMMAND "$<TARGET_FILE:shaderc>" -f ${SHADER} -o "${shaders_output}/${FILE_NAME}_${extension}_essl.h" --platform android --type ${type} --bin2c ${FILE_NAME}_${extension}_essl
                 DEPENDS ${SHADER}
                 COMMENT "Compiling shader ${SHADER}")
             FILE(APPEND ${shaders_inc_file} "#include \"${FILE_NAME}_${extension}_dx9.h\"\n")
@@ -32,6 +33,7 @@ function (AddShaders extension type dx11Profile)
             FILE(APPEND ${shaders_inc_file} "#include \"${FILE_NAME}_${extension}_glsl.h\"\n")
             FILE(APPEND ${shaders_inc_file} "#include \"${FILE_NAME}_${extension}_mtl.h\"\n")
             FILE(APPEND ${shaders_inc_file} "#include \"${FILE_NAME}_${extension}_spv.h\"\n")
+            FILE(APPEND ${shaders_inc_file} "#include \"${FILE_NAME}_${extension}_essl.h\"\n")
             set(SHADER_OUTPUT_FILES ${SHADER_OUTPUT_FILES} ${SHADER_OUTPUT_TARGET} PARENT_SCOPE)
             FILE(APPEND ${shaders_cpp_file} "BGFX_EMBEDDED_SHADER(${FILE_NAME}_${extension}),\n")
         endif()
