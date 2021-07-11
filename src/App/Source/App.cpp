@@ -11,13 +11,12 @@ namespace Imog3n
 	{
 		float m_x;
 		float m_y;
-		float m_z;
 
 		static void init()
 		{
 			ms_layout
 				.begin()
-				.add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
+				.add(bgfx::Attrib::Position, 2, bgfx::AttribType::Float)
 				.end();
 		};
 
@@ -28,19 +27,10 @@ namespace Imog3n
 
 	static PosColorVertex s_cubeVertices[] =
 	{
-		{-1.0f,  1.0f,  1.0f },
-		{ 1.0f,  1.0f,  1.0f },
-		{-1.0f, -1.0f,  1.0f },
-		{ 1.0f, -1.0f,  1.0f },
+		{-1.0f,  3.0f},
+		{ 3.0f,  -1.0f},
+		{-1.0f, -1.0f},
 	};
-
-	static const uint16_t s_cubeTriList[] =
-	{
-		0, 1, 2, // 0
-		1, 3, 2,
-	};
-
-
 
 class Imog3nApp : public entry::AppI
 {
@@ -92,15 +82,8 @@ public:
 			, PosColorVertex::ms_layout
 		);
 
-		// Create static index buffer for triangle list rendering.
-		m_ibh = bgfx::createIndexBuffer(
-			// Static data can be passed with bgfx::makeRef
-			bgfx::makeRef(s_cubeTriList, sizeof(s_cubeTriList))
-		);
-
-		// Create program from shaders.
-		m_program = LoadProgram("Node_vs", "Circle_fs");
-
+		m_programFSTriangle = LoadProgram("ScreenTriangle_vs", "SDF_fs");
+		m_viewInfos = bgfx::createUniform("viewInfos", bgfx::UniformType::Vec4);
 	}
 
 	virtual int shutdown() override
@@ -154,7 +137,7 @@ public:
             EditOptions();
 			ImGui::End();
 
-			ShowNodeEditor();
+			//ShowNodeEditor();
 
 			imguiEndFrame();
 
@@ -170,17 +153,18 @@ public:
 			bgfx::discard();
             bgfx::touch(0);
 
+			float viewInfos[4] = {float(m_height) / float(m_width), 0.f, 0.f, 0.f};
+			bgfx::setUniform(m_viewInfos, viewInfos);
+
 			uint64_t state = BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A;
 
 			// Set vertex and index buffer.
 			bgfx::setVertexBuffer(0, m_vbh);
-			bgfx::setIndexBuffer(m_ibh);
 
 			// Set render states.
 			bgfx::setState(state);
 
-			// Submit primitive for rendering to view 0.
-			bgfx::submit(0, m_program);
+			bgfx::submit(0, m_programFSTriangle);
 
 			// Advance to next frame. Rendering thread will be kicked to
 			// process submitted rendering primitives.
@@ -202,8 +186,8 @@ public:
 
 
 	bgfx::VertexBufferHandle m_vbh;
-	bgfx::IndexBufferHandle m_ibh;
-	bgfx::ProgramHandle m_program;
+	bgfx::ProgramHandle m_programFSTriangle;
+	bgfx::UniformHandle m_viewInfos;
 };
 
 } // namespace

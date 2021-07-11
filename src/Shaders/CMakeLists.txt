@@ -17,7 +17,6 @@ function (AddShaders extension type dx11Profile)
 
         if(${FILE_NAME_EXT} STREQUAL ".${extension}")
             set(SHADER_OUTPUT_TARGET "${shaders_output}/${FILE_NAME}_${extension}_dx11.h")
-
             add_custom_command(
                 OUTPUT ${SHADER_OUTPUT_TARGET}
                 COMMAND "$<TARGET_FILE:shaderc>" -f ${SHADER} -o ${SHADER_OUTPUT_TARGET} --platform windows -p ${dx11Profile} -O 3 --type ${type} --bin2c ${FILE_NAME}_${extension}_dx11
