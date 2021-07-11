@@ -38,14 +38,11 @@ vec3 GetSurfaceNormal(vec3 p)
     return normalize(d0 - d1);
 }
 
-
 void main()
 {
     vec2 uv = v_texcoord0.xy;
-    float ratio =viewInfos.x;//iResolution.y / iResolution.x;
-    //uv.y /= ratio;
+    float ratio = viewInfos.x;
 
-    // Time varying pixel color
     vec3 ro = vec3(0., 0., 0.);
     vec3 rd = normalize(vec3(uv.x*2. -1., (uv.y-0.5) * (ratio * 2.), 1.));
    

@@ -4,6 +4,7 @@
 #include "Node.h"
 #include "Shaders.h"
 #include "UI.h"
+#include <array>
 
 namespace Imog3n
 {
@@ -83,7 +84,13 @@ public:
 		);
 
 		m_programFSTriangle = LoadProgram("ScreenTriangle_vs", "SDF_fs");
-		m_viewInfos = bgfx::createUniform("viewInfos", bgfx::UniformType::Vec4);
+		m_SDF2DepthIdProgram = LoadProgram("ScreenTriangle_vs", "SDF_DepthId_fs");
+		m_DepthId2ColorProgram = LoadProgram("ScreenTriangle_vs", "DepthId_Color_fs");
+		m_viewInfosUniform = bgfx::createUniform("viewInfos", bgfx::UniformType::Vec4);
+		m_cameraViewUniform = bgfx::createUniform("cameraView", bgfx::UniformType::Mat4);
+		m_depthIdSampler = bgfx::createUniform("depthIdSampler", bgfx::UniformType::Sampler);
+
+		m_depthIdFrameBuffer = CreateDepthIdFrameBuffer(m_width, m_height);
 	}
 
 	virtual int shutdown() override
@@ -94,6 +101,20 @@ public:
 		bgfx::shutdown();
 
 		return 0;
+	}
+
+	bgfx::FrameBufferHandle CreateDepthIdFrameBuffer(uint16_t width, uint16_t height)
+	{
+		std::array<bgfx::TextureHandle, 2> textures{
+			   bgfx::createTexture2D(width, height, false/*generateMips*/, 1, bgfx::TextureFormat::RGBA16F, BGFX_TEXTURE_RT),
+			   bgfx::createTexture2D(width, height, false, 1, bgfx::TextureFormat::D24S8, BGFX_TEXTURE_RT) };
+		std::array<bgfx::Attachment, textures.size()> attachments{};
+		for (size_t idx = 0; idx < attachments.size(); ++idx)
+		{
+			attachments[idx].init(textures[idx]);
+		}
+		auto frameBufferHandle = bgfx::createFrameBuffer(static_cast<uint8_t>(attachments.size()), attachments.data(), true);
+		return frameBufferHandle;
 	}
 
 	bool update() override
@@ -153,18 +174,32 @@ public:
 			bgfx::discard();
             bgfx::touch(0);
 
-			float viewInfos[4] = {float(m_height) / float(m_width), 0.f, 0.f, 0.f};
-			bgfx::setUniform(m_viewInfos, viewInfos);
 
-			uint64_t state = BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A;
+			float viewInfos[4] = { float(m_height) / float(m_width), 0.f, 0.f, 0.f };
+			bgfx::setUniform(m_viewInfosUniform, viewInfos);
+			bgfx::setUniform(m_cameraViewUniform, m_cameraViewMatrix);
 
-			// Set vertex and index buffer.
-			bgfx::setVertexBuffer(0, m_vbh);
 
-			// Set render states.
-			bgfx::setState(state);
+			// sdf to depthid
+			bgfx::setViewRect(1, 0, 0, m_width, m_height);
+			bgfx::setViewClear(1, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 255U, 1.0f, 0);
+			bgfx::setViewFrameBuffer(1, m_depthIdFrameBuffer);
 
-			bgfx::submit(0, m_programFSTriangle);
+			bgfx::setVertexBuffer(1, m_vbh);
+			bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_DEPTH_TEST_LEQUAL | BGFX_STATE_WRITE_Z);
+			bgfx::submit(1, m_SDF2DepthIdProgram);
+
+			// depth id to color
+			bgfx::setViewRect(2, 0, 0, m_width, m_height);
+			//bgfx::setViewClear(2, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 255U, 1.0f, 0);
+			bgfx::setViewFrameBuffer(2, {bgfx::kInvalidHandle});
+
+			bgfx::setVertexBuffer(2, m_vbh);
+			bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A);
+			auto textureHandle = bgfx::getTexture(m_depthIdFrameBuffer);
+			bgfx::setTexture(0, m_depthIdSampler, textureHandle);
+			bgfx::submit(2, m_DepthId2ColorProgram);
+
 
 			// Advance to next frame. Rendering thread will be kicked to
 			// process submitted rendering primitives.
@@ -187,7 +222,20 @@ public:
 
 	bgfx::VertexBufferHandle m_vbh;
 	bgfx::ProgramHandle m_programFSTriangle;
-	bgfx::UniformHandle m_viewInfos;
+
+	bgfx::ProgramHandle m_SDF2DepthIdProgram;
+	bgfx::ProgramHandle m_DepthId2ColorProgram;
+
+	bgfx::UniformHandle m_viewInfosUniform;
+	bgfx::UniformHandle m_cameraViewUniform;
+	bgfx::UniformHandle m_depthIdSampler;
+
+	bgfx::FrameBufferHandle m_depthIdFrameBuffer;
+
+	float m_cameraViewMatrix[16] = {1.f, 0.f, 0.f, 0.f,
+								0.f, 1.f, 0.f, 0.f,
+								0.f, 0.f, 1.f, 0.f,
+								0.f, 0.f, 2.f, 1.f};
 };
 
 } // namespace

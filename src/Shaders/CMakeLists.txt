@@ -6,48 +6,52 @@ file(GLOB SHADER_FILES  Source/*.vs
                         Source/*.sc
                         )
 
+file(GLOB VS_SHADER_FILES  Source/*.vs)
+file(GLOB FS_SHADER_FILES  Source/*.fs)
+file(GLOB CS_SHADER_FILES  Source/*.cs)
+
 set(shaders_output "${CMAKE_CURRENT_SOURCE_DIR}/Cache")
 set(shaders_inc_file "${shaders_output}/EmbeddedShaders.h")
 set(shaders_cpp_file "${shaders_output}/EmbeddedShaders.cpp")
 
-function (AddShaders extension type dx11Profile)
-    foreach(SHADER ${SHADER_FILES})
+function (AddShaders extension type dx11Profile SHADER_FILENAMES)
+set(OUTPUT_TARGET_LIST "")
+    foreach(SHADER ${SHADER_FILENAMES})
         get_filename_component(FILE_NAME ${SHADER} NAME_WE)
-        get_filename_component(FILE_NAME_EXT ${SHADER} EXT)
+        set(SHADER_OUTPUT_TARGET "${shaders_output}/${FILE_NAME}_${extension}_dx11.h")
+        add_custom_command(
+            OUTPUT ${SHADER_OUTPUT_TARGET}
+            COMMAND "$<TARGET_FILE:shaderc>" -f ${SHADER} -o ${SHADER_OUTPUT_TARGET} --platform windows -p ${dx11Profile} -O 3 --type ${type} --bin2c ${FILE_NAME}_${extension}_dx11
+            COMMAND "$<TARGET_FILE:shaderc>" -f ${SHADER} -o "${shaders_output}/${FILE_NAME}_${extension}_dx9.h" --platform windows -p ${dx11Profile} -O 3 --type ${type} --bin2c ${FILE_NAME}_${extension}_dx9
+            COMMAND "$<TARGET_FILE:shaderc>" -f ${SHADER} -o "${shaders_output}/${FILE_NAME}_${extension}_glsl.h" --platform asm.js -p 120 --type ${type} --bin2c ${FILE_NAME}_${extension}_glsl
+            COMMAND "$<TARGET_FILE:shaderc>" -f ${SHADER} -o "${shaders_output}/${FILE_NAME}_${extension}_mtl.h" --platform osx -p metal --type ${type} --bin2c ${FILE_NAME}_${extension}_mtl
+            COMMAND "$<TARGET_FILE:shaderc>" -f ${SHADER} -o "${shaders_output}/${FILE_NAME}_${extension}_spv.h" --platform linux -p spirv --type ${type} --bin2c ${FILE_NAME}_${extension}_spv
+            COMMAND "$<TARGET_FILE:shaderc>" -f ${SHADER} -o "${shaders_output}/${FILE_NAME}_${extension}_essl.h" --platform android --type ${type} --bin2c ${FILE_NAME}_${extension}_essl
+            DEPENDS ${SHADER}
+            COMMENT "Compiling shader ${SHADER}")
+        FILE(APPEND ${shaders_inc_file} "#include \"${FILE_NAME}_${extension}_dx9.h\"\n")
+        FILE(APPEND ${shaders_inc_file} "#include \"${FILE_NAME}_${extension}_dx11.h\"\n")
+        FILE(APPEND ${shaders_inc_file} "#include \"${FILE_NAME}_${extension}_glsl.h\"\n")
+        FILE(APPEND ${shaders_inc_file} "#include \"${FILE_NAME}_${extension}_mtl.h\"\n")
+        FILE(APPEND ${shaders_inc_file} "#include \"${FILE_NAME}_${extension}_spv.h\"\n")
+        FILE(APPEND ${shaders_inc_file} "#include \"${FILE_NAME}_${extension}_essl.h\"\n")
+        
+        set(OUTPUT_TARGET_LIST ${OUTPUT_TARGET_LIST} ${SHADER_OUTPUT_TARGET})
 
-        if(${FILE_NAME_EXT} STREQUAL ".${extension}")
-            set(SHADER_OUTPUT_TARGET "${shaders_output}/${FILE_NAME}_${extension}_dx11.h")
-            add_custom_command(
-                OUTPUT ${SHADER_OUTPUT_TARGET}
-                COMMAND "$<TARGET_FILE:shaderc>" -f ${SHADER} -o ${SHADER_OUTPUT_TARGET} --platform windows -p ${dx11Profile} -O 3 --type ${type} --bin2c ${FILE_NAME}_${extension}_dx11
-                COMMAND "$<TARGET_FILE:shaderc>" -f ${SHADER} -o "${shaders_output}/${FILE_NAME}_${extension}_dx9.h" --platform windows -p ${dx11Profile} -O 3 --type ${type} --bin2c ${FILE_NAME}_${extension}_dx9
-                COMMAND "$<TARGET_FILE:shaderc>" -f ${SHADER} -o "${shaders_output}/${FILE_NAME}_${extension}_glsl.h" --platform asm.js -p 120 --type ${type} --bin2c ${FILE_NAME}_${extension}_glsl
-                COMMAND "$<TARGET_FILE:shaderc>" -f ${SHADER} -o "${shaders_output}/${FILE_NAME}_${extension}_mtl.h" --platform osx -p metal --type ${type} --bin2c ${FILE_NAME}_${extension}_mtl
-                COMMAND "$<TARGET_FILE:shaderc>" -f ${SHADER} -o "${shaders_output}/${FILE_NAME}_${extension}_spv.h" --platform linux -p spirv --type ${type} --bin2c ${FILE_NAME}_${extension}_spv
-                COMMAND "$<TARGET_FILE:shaderc>" -f ${SHADER} -o "${shaders_output}/${FILE_NAME}_${extension}_essl.h" --platform android --type ${type} --bin2c ${FILE_NAME}_${extension}_essl
-                DEPENDS ${SHADER}
-                COMMENT "Compiling shader ${SHADER}")
-            FILE(APPEND ${shaders_inc_file} "#include \"${FILE_NAME}_${extension}_dx9.h\"\n")
-            FILE(APPEND ${shaders_inc_file} "#include \"${FILE_NAME}_${extension}_dx11.h\"\n")
-            FILE(APPEND ${shaders_inc_file} "#include \"${FILE_NAME}_${extension}_glsl.h\"\n")
-            FILE(APPEND ${shaders_inc_file} "#include \"${FILE_NAME}_${extension}_mtl.h\"\n")
-            FILE(APPEND ${shaders_inc_file} "#include \"${FILE_NAME}_${extension}_spv.h\"\n")
-            FILE(APPEND ${shaders_inc_file} "#include \"${FILE_NAME}_${extension}_essl.h\"\n")
-            set(SHADER_OUTPUT_FILES ${SHADER_OUTPUT_FILES} ${SHADER_OUTPUT_TARGET} PARENT_SCOPE)
-            FILE(APPEND ${shaders_cpp_file} "BGFX_EMBEDDED_SHADER(${FILE_NAME}_${extension}),\n")
-        endif()
+        FILE(APPEND ${shaders_cpp_file} "BGFX_EMBEDDED_SHADER(${FILE_NAME}_${extension}),\n")
     endforeach(SHADER)
+    set(SHADER_OUTPUT_FILES ${SHADER_OUTPUT_FILES} ${OUTPUT_TARGET_LIST} PARENT_SCOPE)
 endfunction()
 
 if(WIN32)
     FILE(WRITE ${shaders_inc_file} "// generated by CMake\n#include <stdint.h>\n#include <bgfx/embedded_shader.h>\n")
     FILE(WRITE ${shaders_cpp_file} "// generated by CMake\n")
     FILE(WRITE ${shaders_cpp_file} "#include \"EmbeddedShaders.h\"\n#include \"bgfx_utils.h\"\nstatic const bgfx::EmbeddedShader embeddedNodeShaders[] =\n{\n")
-    set(SHADER_OUTPUT_FILES "")
+    
 
-    AddShaders("vs" "vertex" "vs_5_0")
-    AddShaders("cs" "compute" "ps_5_0")
-    AddShaders("fs" "fragment" "ps_5_0")
+    AddShaders("vs" "vertex" "vs_5_0" "${VS_SHADER_FILES}")
+    #AddShaders(".cs" "compute" "ps_5_0" ${CS_SHADER_FILES})
+    AddShaders("fs" "fragment" "ps_5_0" "${FS_SHADER_FILES}")
 
     FILE(APPEND ${shaders_cpp_file} "BGFX_EMBEDDED_SHADER_END()\n};\n#include \"NodeShaderHelper.h\"\n")
 endif()
