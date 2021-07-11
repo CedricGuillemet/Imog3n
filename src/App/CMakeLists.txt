@@ -22,6 +22,7 @@ target_link_libraries(${EXE_NAME} Core)
 target_link_libraries(${EXE_NAME} Nodes)
 target_link_libraries(${EXE_NAME} Shaders)
 target_link_libraries(${EXE_NAME} UI)
+target_link_libraries(${EXE_NAME} glm)
 
 if(MSVC)
     set_target_properties(${EXE_NAME} PROPERTIES LINK_FLAGS_DEBUG "/SUBSYSTEM:WINDOWS")

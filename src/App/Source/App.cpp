@@ -5,6 +5,8 @@
 #include "Shaders.h"
 #include "UI.h"
 #include <array>
+#include <glm/vec4.hpp> // glm::vec4
+#include <glm/mat4x4.hpp> // glm::mat4
 
 namespace Imog3n
 {
@@ -191,9 +193,7 @@ public:
 
 			// depth id to color
 			bgfx::setViewRect(2, 0, 0, m_width, m_height);
-			//bgfx::setViewClear(2, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 255U, 1.0f, 0);
 			bgfx::setViewFrameBuffer(2, {bgfx::kInvalidHandle});
-
 			bgfx::setVertexBuffer(2, m_vbh);
 			bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A);
 			auto textureHandle = bgfx::getTexture(m_depthIdFrameBuffer);

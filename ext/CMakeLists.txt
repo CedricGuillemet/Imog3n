@@ -45,3 +45,7 @@ target_link_libraries(ImGuizmo imgui)
 target_include_directories(ImGuizmo
             PUBLIC "ImGuizmo"
             )
+            
+### GLM
+
+add_subdirectory(glm EXCLUDE_FROM_ALL)
