@@ -64,7 +64,8 @@ void main()
     {
         float lightAttn = length(pos - vec3(0.,-2.,0.));
         float intens = min(1. / pow(lightAttn, 1.5), 0.3);
-        intens *= grid(pos.xz * 20., 0.06);
+        intens *= grid(pos.xz * 30., 0.015);
+        intens *= min(grid(pos.xz * 90., 0.045) + 0.5, 1.);
         intens += 0.3;
 
         color = vec4(intens, intens, intens, 1.0);

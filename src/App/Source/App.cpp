@@ -114,12 +114,15 @@ public:
 		m_SDF2DepthIdProgram = LoadProgram("ScreenTriangle_vs", "SDF_DepthId_fs");
 		m_DepthId2ColorProgram = LoadProgram("ScreenTriangle_vs", "DepthId_Color_fs");
 		m_DepthId2PlaneHelpersProgram = LoadProgram("ScreenTriangle_vs", "DepthId_PlaneHelpers_fs");
+		m_Geom2SDF = LoadProgram("ScreenTriangle_vs", "Geom_SDF_fs");
 		m_viewInfosUniform = bgfx::createUniform("viewInfos", bgfx::UniformType::Vec4);
 		m_primitivesInfo =  bgfx::createUniform("primitivesInfo", bgfx::UniformType::Vec4);
 		m_cameraViewUniform = bgfx::createUniform("cameraView", bgfx::UniformType::Mat4);
 		m_depthIdSampler = bgfx::createUniform("depthIdSampler", bgfx::UniformType::Sampler);
 		m_primitivesSampler = bgfx::createUniform("primitivesSampler", bgfx::UniformType::Sampler);
+		m_SDFSampler = bgfx::createUniform("SDFSampler", bgfx::UniformType::Sampler);
 		m_depthIdTexture = CreateReadBackTexture(m_width, m_height);
+		m_3DSDFTexture = Create3DSDFTexture(256,256,256);
 		m_depthIdFrameBuffer = CreateDepthIdFrameBuffer(m_width, m_height);
 		m_primitivesTexture = CreatePrimitivesTexture();
 		m_readBackBits = new uint16_t[m_width * m_height * 4 * 2];
@@ -136,10 +139,35 @@ public:
 		return 0;
 	}
 
+	bgfx::TextureHandle Create3DSDFTexture(uint16_t width, uint16_t height, uint16_t depth)
+	{
+		float* sdf = new float [256 * 256 * 256];
+		auto ref = bgfx::makeRef(sdf, 256 * 256 * 256 * sizeof(float));
+
+		for (int z = 0; z < 256; z++)
+		{
+			for (int y = 0; y < 256; y++)
+			{
+				for (int x = 0;x < 256;x++)
+				{
+					int index = z * 256 * 256 + y * 256 + x;
+					float cx = x - 128.f;
+					float cy = y - 128.f;
+					float cz = z - 128.f;
+					float d = sqrtf( cx * cx + cy * cy + cz * cz) - 64.f;
+					sdf[index] = d;
+				}
+			}
+		}
+
+		//return bgfx::createTexture3D(width, height, depth, false/*generateMips*/, bgfx::TextureFormat::R32F, BGFX_SAMPLER_U_CLAMP | BGFX_SAMPLER_V_CLAMP | BGFX_SAMPLER_W_CLAMP/*BGFX_TEXTURE_RT*/, ref);
+		return bgfx::createTexture3D(width, height, depth, false/*generateMips*/, bgfx::TextureFormat::R32F, BGFX_SAMPLER_U_CLAMP | BGFX_SAMPLER_V_CLAMP | BGFX_SAMPLER_W_CLAMP | BGFX_TEXTURE_RT);
+	}
+
 	bgfx::FrameBufferHandle CreateDepthIdFrameBuffer(uint16_t width, uint16_t height)
 	{
 		std::array<bgfx::TextureHandle, 2> textures{
-			   bgfx::createTexture2D(width, height, false/*generateMips*/, 1, bgfx::TextureFormat::RGBA16F, BGFX_TEXTURE_RT ),
+			   bgfx::createTexture2D(width, height, false/*generateMips*/, 1, bgfx::TextureFormat::RGBA32F, BGFX_TEXTURE_RT ),
 			   bgfx::createTexture2D(width, height, false, 1, bgfx::TextureFormat::D24S8, BGFX_TEXTURE_RT) };
 		std::array<bgfx::Attachment, textures.size()> attachments{};
 		for (size_t idx = 0; idx < attachments.size(); ++idx)
@@ -152,7 +180,7 @@ public:
 
 	bgfx::TextureHandle CreateReadBackTexture(uint16_t width, uint16_t height)
 	{
-		auto texture = bgfx::createTexture2D(width, height, false/*generateMips*/, 1, bgfx::TextureFormat::RGBA16F, BGFX_TEXTURE_READ_BACK);
+		auto texture = bgfx::createTexture2D(width, height, false/*generateMips*/, 1, bgfx::TextureFormat::RGBA32F, BGFX_TEXTURE_READ_BACK);
 		return texture;
 	}
 
@@ -169,18 +197,18 @@ public:
 	};
 	std::vector<Primitive> m_primitives = {
 		{
-			{1.f,0.f,0.f,0.f,
-			0.f,1.f,0.f,0.f,
-			0.f,0.f,1.f,0.f,
-			0.f,0.f,0.f,1.f
+			{64.f,0.f,0.f,0.f,
+			0.f,64.f,0.f,0.f,
+			0.f,0.f,64.f,0.f,
+			128.f,128.f,128.f,1.f
 			},
 			0.25f
 		},
 		{
-			{0.5f,0.f,0.f,0.f,
-			0.f,0.5f,0.f,0.f,
-			0.f,0.f,0.5f,0.f,
-			1.f,0.f,0.f,1.f
+			{1.f,0.f,0.f,0.f,
+			0.f,1.f,0.f,0.f,
+			0.f,0.f,1.f,0.f,
+			128.f,128.f,128.f,1.f
 			},
 			0.25f
 		}
@@ -230,11 +258,54 @@ public:
 		*values++ = canardConvertFloat16ToNativeFloat(*ptr++);
 	}
 
+	bgfx::FrameBufferHandle m_renderToSDFFrameBuffer[16] = { 
+	  {bgfx::kInvalidHandle}, {bgfx::kInvalidHandle}, {bgfx::kInvalidHandle}, {bgfx::kInvalidHandle}
+	  , {bgfx::kInvalidHandle}, {bgfx::kInvalidHandle}, {bgfx::kInvalidHandle},{bgfx::kInvalidHandle}
+	  , {bgfx::kInvalidHandle}, {bgfx::kInvalidHandle}, {bgfx::kInvalidHandle}, {bgfx::kInvalidHandle}
+	  , {bgfx::kInvalidHandle}, {bgfx::kInvalidHandle}, {bgfx::kInvalidHandle}, {bgfx::kInvalidHandle} };
 	bool update() override
 	{
 		static float res[4] = {0.f, 0.f, 0.f, 0.f};
 		if (!entry::processEvents(m_width, m_height, m_debug, m_reset, &m_mouseState) )
 		{
+			/// Update 3D SDF
+
+			float uniformInfos[] = {float(m_primitives.size()), 0.f, 0.f, 0.f};
+			bgfx::setUniform(m_primitivesInfo, uniformInfos);
+
+			for (int batch = 0;batch<16;batch++)
+			{
+				for (int rt = 0; rt < 16; rt++)
+				{
+					if (bgfx::isValid(m_renderToSDFFrameBuffer[rt]))
+					{
+						bgfx::destroy(m_renderToSDFFrameBuffer[rt]);
+					}
+					bgfx::Attachment attachments;
+					attachments.init(m_3DSDFTexture, bgfx::Access::Write, batch*16 + rt);
+					m_renderToSDFFrameBuffer[rt] = bgfx::createFrameBuffer(1, &attachments);
+				}
+
+				for (int rt = 0; rt < 16; rt++)
+				{
+					bgfx::ViewId viewId = 1 + rt;
+
+					float viewInfos[4] = { float(256) / float(256), float(batch * 16 + rt), 0.f, 0.f };
+					bgfx::setUniform(m_viewInfosUniform, viewInfos);
+					bgfx::setTexture(0, m_primitivesSampler, m_primitivesTexture);
+					bgfx::setViewRect(viewId, 0, 0, 256, 256);
+					bgfx::setViewFrameBuffer(viewId, m_renderToSDFFrameBuffer[rt]);
+					bgfx::setVertexBuffer(0, m_vbh);
+					bgfx::setState(BGFX_STATE_WRITE_R);
+					bgfx::submit(viewId, m_Geom2SDF);
+				}
+				bgfx::frame();
+			}
+			
+
+			/// -----
+
+
 			imguiBeginFrame(m_mouseState.m_mx
 				,  m_mouseState.m_my
 				, (m_mouseState.m_buttons[entry::MouseButton::Left  ] ? IMGUI_MBUT_LEFT   : 0)
@@ -278,7 +349,7 @@ public:
 			UpdatePrimitivesTexture();
 
 			// UI
-			bool overEdit = ShowSDFEdit(m_cameraViewMatrix, 5.f, m_primitives[1].m_matrix, &m_primitives[1].m_smooth);
+			bool overEdit = ShowSDFEdit(m_cameraViewMatrix, fabsf(m_cameraViewMatrix[14]) + 128.f, m_primitives[1].m_matrix, &m_primitives[1].m_smooth);
 
 			imguiEndFrame();
 
@@ -299,6 +370,7 @@ public:
 			bgfx::setUniform(m_viewInfosUniform, viewInfos);
 			bgfx::setUniform(m_cameraViewUniform, m_cameraViewMatrix);
 
+			// geom to SDF
 
 			// sdf to depthid
 			bgfx::setViewRect(1, 0, 0, m_width, m_height);
@@ -307,9 +379,7 @@ public:
 
 			bgfx::setVertexBuffer(0, m_vbh);
 			bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_DEPTH_TEST_LEQUAL | BGFX_STATE_WRITE_Z);
-			bgfx::setTexture(0, m_primitivesSampler, m_primitivesTexture, BGFX_SAMPLER_U_CLAMP | BGFX_SAMPLER_V_CLAMP | BGFX_SAMPLER_MIN_POINT | BGFX_SAMPLER_MAG_POINT);
-			float uniformInfos[] = {float(m_primitives.size()), 0.f, 0.f, 0.f};
-			bgfx::setUniform(m_primitivesInfo, uniformInfos);
+			bgfx::setTexture(0, m_SDFSampler, m_3DSDFTexture, BGFX_SAMPLER_U_CLAMP | BGFX_SAMPLER_V_CLAMP | BGFX_SAMPLER_W_CLAMP /*| BGFX_SAMPLER_MIN_POINT | BGFX_SAMPLER_MAG_POINT*/);
 			bgfx::submit(1, m_SDF2DepthIdProgram);
 
 			// depth id to color
@@ -320,7 +390,7 @@ public:
 			auto textureHandle = bgfx::getTexture(m_depthIdFrameBuffer);
 			bgfx::setTexture(0, m_depthIdSampler, textureHandle);
 			bgfx::submit(2, m_DepthId2ColorProgram);
-
+			/*
 			// plane helpers
 			bgfx::setViewRect(3, 0, 0, m_width, m_height);
 			bgfx::setViewFrameBuffer(3, { bgfx::kInvalidHandle });
@@ -329,7 +399,7 @@ public:
 			//auto textureHandle = bgfx::getTexture(m_depthIdFrameBuffer);
 			bgfx::setTexture(0, m_depthIdSampler, textureHandle);
 			bgfx::submit(3, m_DepthId2PlaneHelpersProgram);
-			
+			*/
 
 			
 			GetTextureBits(m_width, m_height, m_mouseState.m_mx, m_mouseState.m_my, res);
@@ -378,21 +448,24 @@ public:
 	bgfx::ProgramHandle m_SDF2DepthIdProgram;
 	bgfx::ProgramHandle m_DepthId2ColorProgram;
 	bgfx::ProgramHandle m_DepthId2PlaneHelpersProgram;
+	bgfx::ProgramHandle m_Geom2SDF;
 
 	bgfx::UniformHandle m_viewInfosUniform;
 	bgfx::UniformHandle m_cameraViewUniform;
 	bgfx::UniformHandle m_depthIdSampler;
 	bgfx::UniformHandle m_primitivesSampler;
 	bgfx::UniformHandle m_primitivesInfo;
+	bgfx::UniformHandle m_SDFSampler;
 
 	bgfx::FrameBufferHandle m_depthIdFrameBuffer;
 	bgfx::TextureHandle m_depthIdTexture;
 	bgfx::TextureHandle m_primitivesTexture;
+	bgfx::TextureHandle m_3DSDFTexture;
 
 	float m_cameraViewMatrix[16] = {1.f, 0.f, 0.f, 0.f,
 								0.f, 1.f, 0.f, 0.f,
 								0.f, 0.f, 1.f, 0.f,
-								0.f, 0.f, -5.f, 1.f};
+								128.f, 128.f, -256.f, 1.f};
 
 
 	uint16_t* m_readBackBits;

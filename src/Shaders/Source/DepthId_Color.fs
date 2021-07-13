@@ -32,9 +32,11 @@ void main()
         
         vec3 lightColor = vec3(1.,1.,1.);
         vec3 light = lightColor * max(dot(normalize(vec3(1.,1.,1.)), normal), 0.);
-        //light += lightColor * max(dot(normalize(-vec3(1.,1.,1.)), normal), 0.) * 0.3;
+        light += lightColor * max(dot(normalize(-vec3(1.,1.,1.)), normal), 0.) * 0.3;
         light += ambiant;
         vec3 color = albedo * light;
         gl_FragColor = vec4(color, 1.0);
+
+        //gl_FragColor = vec4(vec3(1.,1.,1.), 1.0);
     }
 }
