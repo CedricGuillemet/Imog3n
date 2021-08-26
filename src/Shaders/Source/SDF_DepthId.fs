@@ -7,14 +7,20 @@ $input v_texcoord0
 uniform vec4 viewInfos;
 uniform mat4 cameraView;
 
+uniform vec4 boundMin, boundRatio;
+
 //uniform vec4 primitivesInfo; // x count
+
+vec3 worldToSDF(vec3 position)
+{
+    return (position - boundMin.xyz) / boundRatio.xyz;
+}
 
 SAMPLER3D(SDFSampler, 0);
 
-
 float GetSurfaceDistance(vec3 p)
 {
-    float currentDistance = texture3D(SDFSampler, vec3(p / 256.)).x;
+    float currentDistance = texture3D(SDFSampler, worldToSDF(p)).x;
     return currentDistance;
 }
 

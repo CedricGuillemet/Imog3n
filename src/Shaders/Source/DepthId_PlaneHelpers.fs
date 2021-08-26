@@ -6,7 +6,12 @@ $input v_texcoord0
 
 uniform vec4 viewInfos;
 uniform mat4 cameraView;
-SAMPLER2D(depthIdSampler, 0);
+//
+
+SAMPLER3D(SDFSampler, 0);
+//SAMPLER3D(toto, 0);
+SAMPLER2D(depthIdSampler, 1);
+
 
 float GetSurfaceDistance(vec4 plan, vec3 p)
 {
@@ -50,30 +55,18 @@ void main()
     vec3 rd = mul(cameraView, vec4(normalize(vec3(uv.x*2. -1., (uv.y-0.5) * (ratio * 2.), 1.)), 0.)).xyz;
 
 
-    vec4 helperPlan = vec4(0., 1., 0., 1.);
-    vec3 helperCenter = vec3(0., 1., 0.);
+    vec4 debugPlan = vec4(0., 0, -1., -128.);
 
-    float distToPlan = GetDistance(vec4(0.,1.,0.,-2), ro, rd);
-    float distToHelper = GetDistance(helperPlan, ro, rd);
+    float distToPlan = GetDistance(debugPlan, ro, rd);
 
     vec3 pos = ro + rd * distToPlan;
-    vec3 helperPos = ro + rd * distToHelper;
     
     vec4 color = vec4(0.,0.,0.,0.);
     if (depth > 1000.)
     {
-        float lightAttn = length(pos - vec3(0.,-2.,0.));
-        float intens = min(1. / pow(lightAttn, 1.5), 0.3);
-        intens *= grid(pos.xz * 30., 0.015);
-        intens *= min(grid(pos.xz * 90., 0.045) + 0.5, 1.);
-        intens += 0.3;
-
-        color = vec4(intens, intens, intens, 1.0);
+        float sdfSample = texture3D(SDFSampler, pos / 256.).x;
+        float sdfColor = cos(sdfSample) * 0.5 + 0.5;
+        color = vec4(sdfColor,sdfColor,sdfColor, 1.0);
     }
-    /*{
-        float helperAttn = length(helperPos - helperCenter);
-        float helperAlpha = min( 1.9 * min(1. / pow(helperAttn, 4.), 1.), 1.);
-        color = mix(color, vec4(0.3,0.6,1.,0.5), helperAlpha);
-    }*/
     gl_FragColor = color;
 }

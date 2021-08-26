@@ -5,60 +5,12 @@
 #include "Shaders.h"
 #include "UI.h"
 #include <array>
-#include <glm/vec4.hpp> // glm::vec4
-#include <glm/mat4x4.hpp> // glm::mat4
+#include "Modeler.h"
 
-float canardConvertFloat16ToNativeFloat(uint16_t value)
-{
-	//CANARD_ASSERT(sizeof(float) == 4);
 
-	union FP32
-	{
-		uint32_t u;
-		float f;
-	};
-
-	const union FP32 magic = { (254UL - 15UL) << 23 };
-	const union FP32 was_inf_nan = { (127UL + 16UL) << 23 };
-	union FP32 out;
-
-	out.u = (value & 0x7FFFU) << 13;
-	out.f *= magic.f;
-	if (out.f >= was_inf_nan.f)
-	{
-		out.u |= 255UL << 23;
-	}
-	out.u |= (value & 0x8000UL) << 16;
-
-	return out.f;
-}
 
 namespace Imog3n
 {
-	struct PosColorVertex
-	{
-		float m_x;
-		float m_y;
-
-		static void init()
-		{
-			ms_layout
-				.begin()
-				.add(bgfx::Attrib::Position, 2, bgfx::AttribType::Float)
-				.end();
-		};
-
-		static bgfx::VertexLayout ms_layout;
-	};
-
-	bgfx::VertexLayout PosColorVertex::ms_layout;
-
-	static PosColorVertex s_cubeVertices[] =
-	{
-		{-1.0f,  3.0f},
-		{ 3.0f,  -1.0f},
-		{-1.0f, -1.0f},
-	};
 
 class Imog3nApp : public entry::AppI
 {
@@ -100,33 +52,9 @@ public:
 
 		imguiCreate();
         
-		// Create vertex stream declaration.
-		PosColorVertex::init();
+		
 
-		// Create static vertex buffer.
-		m_vbh = bgfx::createVertexBuffer(
-			// Static data can be passed with bgfx::makeRef
-			bgfx::makeRef(s_cubeVertices, sizeof(s_cubeVertices))
-			, PosColorVertex::ms_layout
-		);
-
-		m_programFSTriangle = LoadProgram("ScreenTriangle_vs", "SDF_fs");
-		m_SDF2DepthIdProgram = LoadProgram("ScreenTriangle_vs", "SDF_DepthId_fs");
-		m_DepthId2ColorProgram = LoadProgram("ScreenTriangle_vs", "DepthId_Color_fs");
-		m_DepthId2PlaneHelpersProgram = LoadProgram("ScreenTriangle_vs", "DepthId_PlaneHelpers_fs");
-		m_Geom2SDF = LoadProgram("ScreenTriangle_vs", "Geom_SDF_fs");
-		m_viewInfosUniform = bgfx::createUniform("viewInfos", bgfx::UniformType::Vec4);
-		m_primitivesInfo =  bgfx::createUniform("primitivesInfo", bgfx::UniformType::Vec4);
-		m_cameraViewUniform = bgfx::createUniform("cameraView", bgfx::UniformType::Mat4);
-		m_depthIdSampler = bgfx::createUniform("depthIdSampler", bgfx::UniformType::Sampler);
-		m_primitivesSampler = bgfx::createUniform("primitivesSampler", bgfx::UniformType::Sampler);
-		m_SDFSampler = bgfx::createUniform("SDFSampler", bgfx::UniformType::Sampler);
-		m_depthIdTexture = CreateReadBackTexture(m_width, m_height);
-		m_3DSDFTexture = Create3DSDFTexture(256,256,256);
-		m_depthIdFrameBuffer = CreateDepthIdFrameBuffer(m_width, m_height);
-		m_primitivesTexture = CreatePrimitivesTexture();
-		m_readBackBits = new uint16_t[m_width * m_height * 4 * 2];
-		m_primitivesTextureData = new float [4 * 256 * 4];
+		mModeler = std::make_unique<Modeler>();
 	}
 
 	virtual int shutdown() override
@@ -139,172 +67,17 @@ public:
 		return 0;
 	}
 
-	bgfx::TextureHandle Create3DSDFTexture(uint16_t width, uint16_t height, uint16_t depth)
-	{
-		float* sdf = new float [256 * 256 * 256];
-		auto ref = bgfx::makeRef(sdf, 256 * 256 * 256 * sizeof(float));
-
-		for (int z = 0; z < 256; z++)
-		{
-			for (int y = 0; y < 256; y++)
-			{
-				for (int x = 0;x < 256;x++)
-				{
-					int index = z * 256 * 256 + y * 256 + x;
-					float cx = x - 128.f;
-					float cy = y - 128.f;
-					float cz = z - 128.f;
-					float d = sqrtf( cx * cx + cy * cy + cz * cz) - 64.f;
-					sdf[index] = d;
-				}
-			}
-		}
-
-		//return bgfx::createTexture3D(width, height, depth, false/*generateMips*/, bgfx::TextureFormat::R32F, BGFX_SAMPLER_U_CLAMP | BGFX_SAMPLER_V_CLAMP | BGFX_SAMPLER_W_CLAMP/*BGFX_TEXTURE_RT*/, ref);
-		return bgfx::createTexture3D(width, height, depth, false/*generateMips*/, bgfx::TextureFormat::R32F, BGFX_SAMPLER_U_CLAMP | BGFX_SAMPLER_V_CLAMP | BGFX_SAMPLER_W_CLAMP | BGFX_TEXTURE_RT);
-	}
-
-	bgfx::FrameBufferHandle CreateDepthIdFrameBuffer(uint16_t width, uint16_t height)
-	{
-		std::array<bgfx::TextureHandle, 2> textures{
-			   bgfx::createTexture2D(width, height, false/*generateMips*/, 1, bgfx::TextureFormat::RGBA32F, BGFX_TEXTURE_RT ),
-			   bgfx::createTexture2D(width, height, false, 1, bgfx::TextureFormat::D24S8, BGFX_TEXTURE_RT) };
-		std::array<bgfx::Attachment, textures.size()> attachments{};
-		for (size_t idx = 0; idx < attachments.size(); ++idx)
-		{
-			attachments[idx].init(textures[idx]);
-		}
-		auto frameBufferHandle = bgfx::createFrameBuffer(static_cast<uint8_t>(attachments.size()), attachments.data(), true);
-		return frameBufferHandle;
-	}
-
-	bgfx::TextureHandle CreateReadBackTexture(uint16_t width, uint16_t height)
-	{
-		auto texture = bgfx::createTexture2D(width, height, false/*generateMips*/, 1, bgfx::TextureFormat::RGBA32F, BGFX_TEXTURE_READ_BACK);
-		return texture;
-	}
-
-	bgfx::TextureHandle CreatePrimitivesTexture()
-	{
-		auto texture = bgfx::createTexture2D(4, 256, false/*generateMips*/, 1, bgfx::TextureFormat::RGBA32F);
-		return texture;
-	}
-
-	struct Primitive
-	{
-		float m_matrix[16];
-		float m_smooth;
-	};
-	std::vector<Primitive> m_primitives = {
-		{
-			{64.f,0.f,0.f,0.f,
-			0.f,64.f,0.f,0.f,
-			0.f,0.f,64.f,0.f,
-			128.f,128.f,128.f,1.f
-			},
-			0.25f
-		},
-		{
-			{1.f,0.f,0.f,0.f,
-			0.f,1.f,0.f,0.f,
-			0.f,0.f,1.f,0.f,
-			128.f,128.f,128.f,1.f
-			},
-			0.25f
-		}
-	};
-	float* m_primitivesTextureData;
-	void UpdatePrimitivesTexture()
-	{
-		// update data
-		for (size_t i = 0;i< m_primitives.size();i++)
-		{
-			const auto& prim = m_primitives[i];
-			const float* primMat = prim.m_matrix;
-			float mat[16];
-			InvertMatrix(primMat, mat);
-			float *ptr = m_primitivesTextureData + 4 * 4 * i;
-			*ptr++ = mat[0];
-			*ptr++ = mat[4];
-			*ptr++ = mat[8];
-			*ptr++ = mat[12];
-
-			*ptr++ = mat[1];
-			*ptr++ = mat[5];
-			*ptr++ = mat[9];
-			*ptr++ = mat[13];
-
-			*ptr++ = mat[2];
-			*ptr++ = mat[6];
-			*ptr++ = mat[10];
-			*ptr++ = mat[14];
-
-			*ptr ++ = prim.m_smooth;
-			*ptr++ = 0.f;
-			*ptr++ = 0.f;
-			*ptr++ = 0.f;
-		}
-		bgfx::updateTexture2D(m_primitivesTexture,0,0,0,0, 4,256, bgfx::makeRef(m_primitivesTextureData, 4*256*4*sizeof(float)));
-	}
-	void GetTextureBits(uint16_t width, uint16_t height, uint32_t x, uint32_t y, float* values)
-	{
-		auto sourceTextureHandle = bgfx::getTexture(m_depthIdFrameBuffer);
-		bgfx::blit(4, m_depthIdTexture, 0, 0, sourceTextureHandle);
-		bgfx::readTexture(m_depthIdTexture, m_readBackBits);
-		uint16_t* ptr = m_readBackBits + y * width * 4 + x * 4;
-		*values++ = canardConvertFloat16ToNativeFloat(*ptr++);
-		*values++ = canardConvertFloat16ToNativeFloat(*ptr++);
-		*values++ = canardConvertFloat16ToNativeFloat(*ptr++);
-		*values++ = canardConvertFloat16ToNativeFloat(*ptr++);
-	}
-
-	bgfx::FrameBufferHandle m_renderToSDFFrameBuffer[16] = { 
-	  {bgfx::kInvalidHandle}, {bgfx::kInvalidHandle}, {bgfx::kInvalidHandle}, {bgfx::kInvalidHandle}
-	  , {bgfx::kInvalidHandle}, {bgfx::kInvalidHandle}, {bgfx::kInvalidHandle},{bgfx::kInvalidHandle}
-	  , {bgfx::kInvalidHandle}, {bgfx::kInvalidHandle}, {bgfx::kInvalidHandle}, {bgfx::kInvalidHandle}
-	  , {bgfx::kInvalidHandle}, {bgfx::kInvalidHandle}, {bgfx::kInvalidHandle}, {bgfx::kInvalidHandle} };
 	bool update() override
 	{
 		static float res[4] = {0.f, 0.f, 0.f, 0.f};
 		if (!entry::processEvents(m_width, m_height, m_debug, m_reset, &m_mouseState) )
 		{
-			/// Update 3D SDF
 
-			float uniformInfos[] = {float(m_primitives.size()), 0.f, 0.f, 0.f};
-			bgfx::setUniform(m_primitivesInfo, uniformInfos);
+			Input input;
 
-			for (int batch = 0;batch<16;batch++)
-			{
-				for (int rt = 0; rt < 16; rt++)
-				{
-					if (bgfx::isValid(m_renderToSDFFrameBuffer[rt]))
-					{
-						bgfx::destroy(m_renderToSDFFrameBuffer[rt]);
-					}
-					bgfx::Attachment attachments;
-					attachments.init(m_3DSDFTexture, bgfx::Access::Write, batch*16 + rt);
-					m_renderToSDFFrameBuffer[rt] = bgfx::createFrameBuffer(1, &attachments);
-				}
-
-				for (int rt = 0; rt < 16; rt++)
-				{
-					bgfx::ViewId viewId = 1 + rt;
-
-					float viewInfos[4] = { float(256) / float(256), float(batch * 16 + rt), 0.f, 0.f };
-					bgfx::setUniform(m_viewInfosUniform, viewInfos);
-					bgfx::setTexture(0, m_primitivesSampler, m_primitivesTexture);
-					bgfx::setViewRect(viewId, 0, 0, 256, 256);
-					bgfx::setViewFrameBuffer(viewId, m_renderToSDFFrameBuffer[rt]);
-					bgfx::setVertexBuffer(0, m_vbh);
-					bgfx::setState(BGFX_STATE_WRITE_R);
-					bgfx::submit(viewId, m_Geom2SDF);
-				}
-				bgfx::frame();
-			}
-			
-
-			/// -----
-
+			mModeler->Tick(input);
+			mModeler->Resize(m_width, m_height);
+			mModeler->Render();
 
 			imguiBeginFrame(m_mouseState.m_mx
 				,  m_mouseState.m_my
@@ -346,10 +119,8 @@ public:
 
 			//ShowNodeEditor();
 
-			UpdatePrimitivesTexture();
-
 			// UI
-			bool overEdit = ShowSDFEdit(m_cameraViewMatrix, fabsf(m_cameraViewMatrix[14]) + 128.f, m_primitives[1].m_matrix, &m_primitives[1].m_smooth);
+			//bool overEdit = ShowSDFEdit(m_cameraViewMatrix, fabsf(m_cameraViewMatrix[14]) + 128.f, m_primitives[1].m_matrix, &m_primitives[1].m_smooth);
 
 			imguiEndFrame();
 
@@ -366,44 +137,15 @@ public:
             bgfx::touch(0);
 
 
-			float viewInfos[4] = { float(m_height) / float(m_width), 0.f, 0.f, 0.f };
-			bgfx::setUniform(m_viewInfosUniform, viewInfos);
-			bgfx::setUniform(m_cameraViewUniform, m_cameraViewMatrix);
+			//float viewInfos[4] = { float(m_height) / float(m_width), 0.f, 0.f, 0.f };
+			//bgfx::setUniform(m_viewInfosUniform, viewInfos);
+			
 
 			// geom to SDF
 
 			// sdf to depthid
-			bgfx::setViewRect(1, 0, 0, m_width, m_height);
-			bgfx::setViewClear(1, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 255U, 1.0f, 0);
-			bgfx::setViewFrameBuffer(1, m_depthIdFrameBuffer);
-
-			bgfx::setVertexBuffer(0, m_vbh);
-			bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_DEPTH_TEST_LEQUAL | BGFX_STATE_WRITE_Z);
-			bgfx::setTexture(0, m_SDFSampler, m_3DSDFTexture, BGFX_SAMPLER_U_CLAMP | BGFX_SAMPLER_V_CLAMP | BGFX_SAMPLER_W_CLAMP /*| BGFX_SAMPLER_MIN_POINT | BGFX_SAMPLER_MAG_POINT*/);
-			bgfx::submit(1, m_SDF2DepthIdProgram);
-
-			// depth id to color
-			bgfx::setViewRect(2, 0, 0, m_width, m_height);
-			bgfx::setViewFrameBuffer(2, {bgfx::kInvalidHandle});
-			bgfx::setVertexBuffer(0, m_vbh);
-			bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A);
-			auto textureHandle = bgfx::getTexture(m_depthIdFrameBuffer);
-			bgfx::setTexture(0, m_depthIdSampler, textureHandle);
-			bgfx::submit(2, m_DepthId2ColorProgram);
-			/*
-			// plane helpers
-			bgfx::setViewRect(3, 0, 0, m_width, m_height);
-			bgfx::setViewFrameBuffer(3, { bgfx::kInvalidHandle });
-			bgfx::setVertexBuffer(0, m_vbh);
-			bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_BLEND_ALPHA);
-			//auto textureHandle = bgfx::getTexture(m_depthIdFrameBuffer);
-			bgfx::setTexture(0, m_depthIdSampler, textureHandle);
-			bgfx::submit(3, m_DepthId2PlaneHelpersProgram);
-			*/
-
 			
-			GetTextureBits(m_width, m_height, m_mouseState.m_mx, m_mouseState.m_my, res);
-
+			/*
 			ImGuiIO& io = ImGui::GetIO();
 			if (io.MouseClicked[0] && !overEdit)
 			{
@@ -421,7 +163,7 @@ public:
 					m_primitives[1].m_matrix[13] = m_cameraViewMatrix[13] - y;
 					m_primitives[1].m_matrix[14] = m_cameraViewMatrix[14] + distance;
 				}
-			}
+			}*/
 
 			// Advance to next frame. Rendering thread will be kicked to
 			// process submitted rendering primitives.
@@ -441,34 +183,7 @@ public:
 	uint32_t m_reset;
 	int64_t m_timeOffset;
 
-
-	bgfx::VertexBufferHandle m_vbh;
-	bgfx::ProgramHandle m_programFSTriangle;
-
-	bgfx::ProgramHandle m_SDF2DepthIdProgram;
-	bgfx::ProgramHandle m_DepthId2ColorProgram;
-	bgfx::ProgramHandle m_DepthId2PlaneHelpersProgram;
-	bgfx::ProgramHandle m_Geom2SDF;
-
-	bgfx::UniformHandle m_viewInfosUniform;
-	bgfx::UniformHandle m_cameraViewUniform;
-	bgfx::UniformHandle m_depthIdSampler;
-	bgfx::UniformHandle m_primitivesSampler;
-	bgfx::UniformHandle m_primitivesInfo;
-	bgfx::UniformHandle m_SDFSampler;
-
-	bgfx::FrameBufferHandle m_depthIdFrameBuffer;
-	bgfx::TextureHandle m_depthIdTexture;
-	bgfx::TextureHandle m_primitivesTexture;
-	bgfx::TextureHandle m_3DSDFTexture;
-
-	float m_cameraViewMatrix[16] = {1.f, 0.f, 0.f, 0.f,
-								0.f, 1.f, 0.f, 0.f,
-								0.f, 0.f, 1.f, 0.f,
-								128.f, 128.f, -256.f, 1.f};
-
-
-	uint16_t* m_readBackBits;
+	std::unique_ptr<Modeler> mModeler;
 };
 
 } // namespace
