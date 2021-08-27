@@ -46,6 +46,8 @@ target_include_directories(ImGuizmo
             PUBLIC "ImGuizmo"
             )
             
+target_compile_definitions(ImGuizmo PRIVATE IMGUIZMO_NAMESPACE=imguizmo_)
+
 ### GLM
 
 add_subdirectory(glm EXCLUDE_FROM_ALL)

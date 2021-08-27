@@ -11,3 +11,5 @@ target_link_libraries(UI ImGuizmo imgui glm)
 target_include_directories(UI
             PUBLIC "Include"
             PRIVATE "Source")
+
+target_compile_definitions(UI PRIVATE IMGUIZMO_NAMESPACE=imguizmo_)

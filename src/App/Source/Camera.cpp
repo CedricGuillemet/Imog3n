@@ -9,22 +9,24 @@ namespace Imog3n {
 
     bool Camera::Tick(const Input& input, SDFRenderer& sdfRenderer)
     {
-        if (input.mButtonsDown[2])
+        if (mOperation == Operation::None)
         {
-            if (mOperation == Operation::None)
+            if (input.mButtonsDown[2])
             {
                 // new op
-                float res[4] = {0.f, 0.f, 0.f, 0.f};
+                float res[4] = { 0.f, 0.f, 0.f, 0.f };
                 sdfRenderer.GetValueAt(input.mX, input.mY, res);
-                //float depthAtMousePosition = 
-                printf("");
+                mOperation = Operation::Pan;
             }
         }
-        else if (mOperation != Operation::None)
+        else
         {
-            mOperation = Operation::None;
+            if (!input.mButtonsDown[2])
+            {
+                mOperation = Operation::None;
+            }
+            mMatrix.Translate(Vec3(input.mDeltaX * 0.01f, input.mDeltaY * 0.01f, 0.f));
         }
-
         return false;
     }
 

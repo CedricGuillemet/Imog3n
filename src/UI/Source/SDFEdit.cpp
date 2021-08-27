@@ -736,8 +736,8 @@ void InvertMatrix(const float* sourceMatrix, float* destinationMatrix)
     mat->Inverse(*(matrix_t*)sourceMatrix);
 }
 
-static ImGuizmo2::OPERATION mCurrentGizmoOperation(ImGuizmo2::TRANSLATE);
-static ImGuizmo2::MODE mCurrentGizmoMode(ImGuizmo2::LOCAL);
+static imguizmo_::OPERATION mCurrentGizmoOperation(imguizmo_::TRANSLATE);
+static imguizmo_::MODE mCurrentGizmoMode(imguizmo_::LOCAL);
 
 void EditTransform(float* matrix, float* parameters)
 {
@@ -752,33 +752,33 @@ void EditTransform(float* matrix, float* parameters)
     //if (editTransformDecomposition)
     {
         if (ImGui::IsKeyPressed(90))
-            mCurrentGizmoOperation = ImGuizmo2::TRANSLATE;
+            mCurrentGizmoOperation = imguizmo_::TRANSLATE;
         if (ImGui::IsKeyPressed(69))
-            mCurrentGizmoOperation = ImGuizmo2::ROTATE;
+            mCurrentGizmoOperation = imguizmo_::ROTATE;
         if (ImGui::IsKeyPressed(82)) // r Key
-            mCurrentGizmoOperation = ImGuizmo2::SCALE;
-        if (ImGui::RadioButton("Translate", mCurrentGizmoOperation == ImGuizmo2::TRANSLATE))
-            mCurrentGizmoOperation = ImGuizmo2::TRANSLATE;
+            mCurrentGizmoOperation = imguizmo_::SCALE;
+        if (ImGui::RadioButton("Translate", mCurrentGizmoOperation == imguizmo_::TRANSLATE))
+            mCurrentGizmoOperation = imguizmo_::TRANSLATE;
         ImGui::SameLine();
-        if (ImGui::RadioButton("Rotate", mCurrentGizmoOperation == ImGuizmo2::ROTATE))
-            mCurrentGizmoOperation = ImGuizmo2::ROTATE;
+        if (ImGui::RadioButton("Rotate", mCurrentGizmoOperation == imguizmo_::ROTATE))
+            mCurrentGizmoOperation = imguizmo_::ROTATE;
         ImGui::SameLine();
-        if (ImGui::RadioButton("Scale", mCurrentGizmoOperation == ImGuizmo2::SCALE))
-            mCurrentGizmoOperation = ImGuizmo2::SCALE;
+        if (ImGui::RadioButton("Scale", mCurrentGizmoOperation == imguizmo_::SCALE))
+            mCurrentGizmoOperation = imguizmo_::SCALE;
         float matrixTranslation[3], matrixRotation[3], matrixScale[3];
-        ImGuizmo2::DecomposeMatrixToComponents(matrix, matrixTranslation, matrixRotation, matrixScale);
+        imguizmo_::DecomposeMatrixToComponents(matrix, matrixTranslation, matrixRotation, matrixScale);
         ImGui::InputFloat3("Tr", matrixTranslation);
         ImGui::InputFloat3("Rt", matrixRotation);
         ImGui::InputFloat3("Sc", matrixScale);
-        ImGuizmo2::RecomposeMatrixFromComponents(matrixTranslation, matrixRotation, matrixScale, matrix);
+        imguizmo_::RecomposeMatrixFromComponents(matrixTranslation, matrixRotation, matrixScale, matrix);
 
-        if (mCurrentGizmoOperation != ImGuizmo2::SCALE)
+        if (mCurrentGizmoOperation != imguizmo_::SCALE)
         {
-            if (ImGui::RadioButton("Local", mCurrentGizmoMode == ImGuizmo2::LOCAL))
-                mCurrentGizmoMode = ImGuizmo2::LOCAL;
+            if (ImGui::RadioButton("Local", mCurrentGizmoMode == imguizmo_::LOCAL))
+                mCurrentGizmoMode = imguizmo_::LOCAL;
             ImGui::SameLine();
-            if (ImGui::RadioButton("World", mCurrentGizmoMode == ImGuizmo2::WORLD))
-                mCurrentGizmoMode = ImGuizmo2::WORLD;
+            if (ImGui::RadioButton("World", mCurrentGizmoMode == imguizmo_::WORLD))
+                mCurrentGizmoMode = imguizmo_::WORLD;
         }
         if (ImGui::IsKeyPressed(83))
             useSnap = !useSnap;
@@ -787,13 +787,13 @@ void EditTransform(float* matrix, float* parameters)
 
         switch (mCurrentGizmoOperation)
         {
-        case ImGuizmo2::TRANSLATE:
+        case imguizmo_::TRANSLATE:
             ImGui::InputFloat3("Snap", &snap[0]);
             break;
-        case ImGuizmo2::ROTATE:
+        case imguizmo_::ROTATE:
             ImGui::InputFloat("Angle Snap", &snap[0]);
             break;
-        case ImGuizmo2::SCALE:
+        case imguizmo_::SCALE:
             ImGui::InputFloat("Scale Snap", &snap[0]);
             break;
         }
@@ -814,8 +814,8 @@ void EditTransform(float* matrix, float* parameters)
     //float viewManipulateRight = io.DisplaySize.x;
     //float viewManipulateTop = 0;
     
-    //ImGuizmo2::SetRect(0, 0, io.DisplaySize.x, io.DisplaySize.y);
-    //ImGuizmo2::Manipulate(cameraView, cameraProjection, mCurrentGizmoOperation, mCurrentGizmoMode, matrix, NULL, useSnap ? &snap[0] : NULL, boundSizing ? bounds : NULL, boundSizingSnap ? boundsSnap : NULL);
+    //imguizmo_::SetRect(0, 0, io.DisplaySize.x, io.DisplaySize.y);
+    //imguizmo_::Manipulate(cameraView, cameraProjection, mCurrentGizmoOperation, mCurrentGizmoMode, matrix, NULL, useSnap ? &snap[0] : NULL, boundSizing ? bounds : NULL, boundSizingSnap ? boundsSnap : NULL);
 }
 
 
@@ -825,8 +825,8 @@ bool ShowSDFEdit(float* viewMatrix, float length, float* currentMatrix, float* p
     float viewManipulateRight = io.DisplaySize.x;
     float viewManipulateTop = 2.f;
 
-    ImGuizmo2::BeginFrame();
-    ImGuizmo2::SetRect(0, 0, io.DisplaySize.x, io.DisplaySize.y);
+    imguizmo_::BeginFrame();
+    imguizmo_::SetRect(0, 0, io.DisplaySize.x, io.DisplaySize.y);
 
     
 
@@ -840,9 +840,9 @@ bool ShowSDFEdit(float* viewMatrix, float length, float* currentMatrix, float* p
 
     matrix_t projection;
     Perspective(27.f, 1280.f/720.f, 0.01f, 100.f, projection.m16);
-    ImGuizmo2::Manipulate(viewInv.m16, projection.m16, mCurrentGizmoOperation, mCurrentGizmoMode, currentMatrix);
+    imguizmo_::Manipulate(viewInv.m16, projection.m16, mCurrentGizmoOperation, mCurrentGizmoMode, currentMatrix);
 
-    ImGuizmo2::ViewManipulate(viewInv.m16, length, ImVec2(viewManipulateRight - 132, viewManipulateTop), ImVec2(128, 128), IM_COL32(0x10,0x10,0x10,0xAA));
+    imguizmo_::ViewManipulate(viewInv.m16, length, ImVec2(viewManipulateRight - 132, viewManipulateTop), ImVec2(128, 128), IM_COL32(0x10,0x10,0x10,0xAA));
     
     matrix_t view;
     view.Inverse(viewInv);
@@ -856,5 +856,5 @@ bool ShowSDFEdit(float* viewMatrix, float length, float* currentMatrix, float* p
 
     EditTransform(currentMatrix, parameters);
 
-    return ImGuizmo2::IsOver();
+    return imguizmo_::IsOver();
 }
