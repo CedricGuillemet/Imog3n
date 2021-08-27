@@ -13,7 +13,7 @@ uniform vec4 boundMin, boundRatio;
 
 vec3 worldToSDF(vec3 position)
 {
-    return (position - boundMin.xyz) / boundRatio.xyz;
+    return (position - boundMin.xyz) * boundRatio.xyz;
 }
 
 SAMPLER3D(SDFSampler, 0);
@@ -35,10 +35,17 @@ vec3 GetSurfaceNormal(vec3 p)
     return normalize(d0 - d1);
 }
 
+float sdBox( vec3 p, vec3 b )
+{
+  vec3 q = abs(p) - b;
+  return length(max(q,0.0)) + min(max(q.x,max(q.y,q.z)),0.0);
+}
+
 vec2 GetDistance(vec3 o, vec3 d)
 {
     int i;
-    float dist = 0.;
+    // initial distance to 3d texture bounding box
+    float dist = sdBox(worldToSDF(o) - vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5));
     for (i = 0;i < 100;i++)
     {
         float stepDistance = GetSurfaceDistance(o + d * dist);
@@ -50,6 +57,7 @@ vec2 GetDistance(vec3 o, vec3 d)
     }
     return vec2(99999., 0.);
 }
+
 
 void main()
 {

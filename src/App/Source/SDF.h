@@ -38,7 +38,7 @@ namespace Imog3n {
 
 		bgfx::TextureHandle Create3DSDFTexture(uint16_t width, uint16_t height, uint16_t depth)
 		{
-			float* sdf = new float[256 * 256 * 256];
+			/*float* sdf = new float[256 * 256 * 256];
 			auto ref = bgfx::makeRef(sdf, 256 * 256 * 256 * sizeof(float));
 
 			for (int z = 0; z < 256; z++)
@@ -55,10 +55,10 @@ namespace Imog3n {
 						sdf[index] = d;
 					}
 				}
-			}
+			}*/
 
 			//return bgfx::createTexture3D(width, height, depth, false/*generateMips*/, bgfx::TextureFormat::R32F, BGFX_SAMPLER_U_CLAMP | BGFX_SAMPLER_V_CLAMP | BGFX_SAMPLER_W_CLAMP/*BGFX_TEXTURE_RT*/, ref);
-			return bgfx::createTexture3D(width, height, depth, false/*generateMips*/, bgfx::TextureFormat::R32F, BGFX_SAMPLER_U_BORDER | BGFX_SAMPLER_V_BORDER | BGFX_SAMPLER_W_BORDER | BGFX_TEXTURE_RT);
+			return bgfx::createTexture3D(width, height, depth, false/*generateMips*/, bgfx::TextureFormat::R32F, BGFX_SAMPLER_U_CLAMP | BGFX_SAMPLER_V_CLAMP | BGFX_SAMPLER_W_CLAMP | BGFX_TEXTURE_RT);
 		}
 	};
 

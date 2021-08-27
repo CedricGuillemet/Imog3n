@@ -74,6 +74,15 @@ public:
 		{
 
 			Input input;
+			ImGuiIO& io = ImGui::GetIO();
+			input.mButtonsDown[0] = io.MouseDown[0];
+			input.mButtonsDown[1] = io.MouseDown[1];
+			input.mButtonsDown[2] = io.MouseDown[2];
+			input.mControlDown = io.KeyCtrl;
+			input.mX = static_cast<int>(io.MousePos.x);
+			input.mY = static_cast<int>(io.MousePos.y);
+			input.mDeltaX = static_cast<int>(io.MouseDelta.x);
+			input.mDeltaY = static_cast<int>(io.MouseDelta.y);
 
 			mModeler->Tick(input);
 			mModeler->Resize(m_width, m_height);

@@ -24,6 +24,7 @@ namespace Imog3n {
                 mPrimToSDF.ComputeSDF(mPrimBatch, mSDF);
                 mDirty = false;
             }
+            mCamera.Tick(input, mSDFRenderer);
         }
 
         void Render()

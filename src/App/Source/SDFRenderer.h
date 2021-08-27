@@ -135,15 +135,16 @@ namespace Imog3n {
 
 		void GetTextureBits()
 		{
-			auto sourceTextureHandle = bgfx::getTexture(m_depthIdFrameBuffer);
+ 			auto sourceTextureHandle = bgfx::getTexture(m_depthIdFrameBuffer);
 			bgfx::blit(4, m_depthIdTexture, 0, 0, sourceTextureHandle);
-			bgfx::readTexture(m_depthIdTexture, m_readBackBits.data());
+			auto frameNumber = bgfx::readTexture(m_depthIdTexture, m_readBackBits.data());
+			while (bgfx::frame() != frameNumber) {}
 		}
 
 		bgfx::FrameBufferHandle CreateDepthIdFrameBuffer(uint16_t width, uint16_t height)
 		{
 			std::array<bgfx::TextureHandle, 2> textures{
-				   bgfx::createTexture2D(width, height, false/*generateMips*/, 1, bgfx::TextureFormat::RGBA32F, BGFX_TEXTURE_RT),
+				   bgfx::createTexture2D(width, height, false/*generateMips*/, 1, bgfx::TextureFormat::RGBA16F, BGFX_TEXTURE_RT),
 				   bgfx::createTexture2D(width, height, false, 1, bgfx::TextureFormat::D24S8, BGFX_TEXTURE_RT) };
 			std::array<bgfx::Attachment, textures.size()> attachments{};
 			for (size_t idx = 0; idx < attachments.size(); ++idx)
@@ -156,7 +157,7 @@ namespace Imog3n {
 
 		bgfx::TextureHandle CreateReadBackTexture(uint16_t width, uint16_t height)
 		{
-			auto texture = bgfx::createTexture2D(width, height, false/*generateMips*/, 1, bgfx::TextureFormat::RGBA32F, BGFX_TEXTURE_READ_BACK);
+			auto texture = bgfx::createTexture2D(width, height, false/*generateMips*/, 1, bgfx::TextureFormat::RGBA16F, BGFX_TEXTURE_READ_BACK);
 			return texture;
 		}
     };
