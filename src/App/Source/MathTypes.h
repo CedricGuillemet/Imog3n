@@ -1,6 +1,17 @@
 #pragma once
+#include <math.h>
+#include <float.h>
+#include <stdint.h>
+#include <algorithm>
 
-namespace Imog3n {
+namespace Imog3n
+{
+    struct Mat4x4;
+
+    template<typename T> T Clamp(T min, T max, T value)
+    {
+        return (value < min) ? min : ((value > max) ? max : value);
+    }
 
     struct Vec3
     {
@@ -29,7 +40,46 @@ namespace Imog3n {
         }
         Vec3& operator += (const Vec3& v) { x += v.x; y += v.y; z += v.z; return *this; }
         Vec3& operator -= (const Vec3& v) { x -= v.x; y -= v.y; z -= v.z; return *this; }
+
+        float LengthSquared() const
+        {
+            return x * x + y * y + z * z;
+        }
+
+        float Length() const
+        {
+            return sqrtf(LengthSquared() + FLT_EPSILON);
+        }
+
+        Vec3& Normalize()
+        {
+            const float invLength = 1.f / Length();
+            x *= invLength;
+            y *= invLength;
+            z *= invLength;
+            return *this;
+        }
+        static const Vec3 X() { return { 1.f, 0.f, 0.f }; }
+        static const Vec3 Y() { return { 0.f, 1.f, 0.f }; }
+        static const Vec3 Z() { return { 0.f, 0.f, 1.f }; }
+
+        void TransformVector(const Mat4x4& matrix);
+        void TransformPoint(const Mat4x4& matrix);
     };
+
+    inline Vec3 operator * (const Vec3& a, const float v) 
+    { 
+        return { a.x * v, a.y * v, a.z * v };
+    }
+
+    inline Vec3 Cross(const Vec3& v1, const Vec3& v2)
+    {
+        Vec3 res;
+        res.x = v1.y * v2.z - v1.z * v2.y;
+        res.y = v1.z * v2.x - v1.x * v2.z;
+        res.z = v1.x * v2.y - v1.y * v2.x;
+        return res;
+    }
 
     struct BoundingBox
     {
@@ -65,7 +115,11 @@ namespace Imog3n {
 
     struct Mat4x4
     {
-        float v[16];
+        union
+        {
+            float v[16];
+            float m[4][4];
+        };
 
         Mat4x4& Translate(const Vec3& translation) 
         {
@@ -75,11 +129,42 @@ namespace Imog3n {
             return *this;
         }
 
+        Mat4x4& Translation(const Vec3& translation);
+
         Mat4x4 operator * (const Mat4x4& v) const
         {
             Mat4x4 res;
             FPU_MatrixF_x_MatrixF(this->v, v.v, res.v);
             return res;
+        }
+
+
+        Vec3 Right() const { return {m[0][0], m[0][1], m[0][2]}; }
+        Vec3 Up() const { return { m[1][0], m[1][1], m[1][2] }; }
+        Vec3 Direction() const { return { m[2][0], m[2][1], m[2][2] }; }
+        Vec3 Translation() const { return { m[3][0], m[3][1], m[3][2] }; }
+
+        void Set(const Vec3& right, const Vec3& up, const Vec3& direction, const Vec3& translation)
+        {
+            m[0][0] = right.x;
+            m[0][1] = right.y;
+            m[0][2] = right.z;
+            m[0][3] = 0.f;
+
+            m[1][0] = up.x;
+            m[1][1] = up.y;
+            m[1][2] = up.z;
+            m[1][3] = 0.f;
+
+            m[2][0] = direction.x;
+            m[2][1] = direction.y;
+            m[2][2] = direction.z;
+            m[2][3] = 0.f;
+
+            m[3][0] = translation.x;
+            m[3][1] = translation.y;
+            m[3][2] = translation.z;
+            m[3][3] = 1.f;
         }
 
         void FPU_MatrixF_x_MatrixF(const float* a, const float* b, float* r) const
@@ -104,6 +189,8 @@ namespace Imog3n {
             r[14] = a[12] * b[2] + a[13] * b[6] + a[14] * b[10] + a[15] * b[14];
             r[15] = a[12] * b[3] + a[13] * b[7] + a[14] * b[11] + a[15] * b[15];
         }
+
+        void RotationAxis(const Vec3& axis, float angle);
     };
 
     constexpr Mat4x4 Identity = { 1.f, 0.f, 0.f, 0.f,

@@ -49,11 +49,12 @@ vec2 GetDistance(vec3 o, vec3 d)
     for (i = 0;i < 100;i++)
     {
         float stepDistance = GetSurfaceDistance(o + d * dist);
+        dist += stepDistance;
         if (stepDistance <= 0.001)
         {
             return vec2(dist, 1.);
         }
-        dist += stepDistance;
+        
     }
     return vec2(99999., 0.);
 }

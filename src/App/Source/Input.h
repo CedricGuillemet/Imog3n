@@ -8,6 +8,7 @@ namespace Imog3n {
         int mDeltaX, mDeltaY;
         bool mButtonsDown[3]{ false, false, false };
         bool mControlDown{false};
+        float mWheel{};
     };
 
 } // namespace

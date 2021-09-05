@@ -5,9 +5,8 @@
 #include "Shaders.h"
 #include "UI.h"
 #include <array>
+#include <memory>
 #include "Modeler.h"
-
-
 
 namespace Imog3n
 {
@@ -72,6 +71,15 @@ public:
 		static float res[4] = {0.f, 0.f, 0.f, 0.f};
 		if (!entry::processEvents(m_width, m_height, m_debug, m_reset, &m_mouseState) )
 		{
+			imguiBeginFrame(m_mouseState.m_mx
+				,  m_mouseState.m_my
+				, (m_mouseState.m_buttons[entry::MouseButton::Left  ] ? IMGUI_MBUT_LEFT   : 0)
+				| (m_mouseState.m_buttons[entry::MouseButton::Right ] ? IMGUI_MBUT_RIGHT  : 0)
+				| (m_mouseState.m_buttons[entry::MouseButton::Middle] ? IMGUI_MBUT_MIDDLE : 0)
+				,  m_mouseState.m_mz
+				, uint16_t(m_width)
+				, uint16_t(m_height)
+				);
 
 			Input input;
 			ImGuiIO& io = ImGui::GetIO();
@@ -83,21 +91,11 @@ public:
 			input.mY = static_cast<int>(io.MousePos.y);
 			input.mDeltaX = static_cast<int>(io.MouseDelta.x);
 			input.mDeltaY = static_cast<int>(io.MouseDelta.y);
+			input.mWheel = io.MouseWheel;
 
 			mModeler->Tick(input);
 			mModeler->Resize(m_width, m_height);
 			mModeler->Render();
-
-			imguiBeginFrame(m_mouseState.m_mx
-				,  m_mouseState.m_my
-				, (m_mouseState.m_buttons[entry::MouseButton::Left  ] ? IMGUI_MBUT_LEFT   : 0)
-				| (m_mouseState.m_buttons[entry::MouseButton::Right ] ? IMGUI_MBUT_RIGHT  : 0)
-				| (m_mouseState.m_buttons[entry::MouseButton::Middle] ? IMGUI_MBUT_MIDDLE : 0)
-				,  m_mouseState.m_mz
-				, uint16_t(m_width)
-				, uint16_t(m_height)
-				);
-
 
 			ImGui::SetNextWindowPos(
 				  ImVec2(0.f, 10.0f)

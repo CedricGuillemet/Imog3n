@@ -37,6 +37,8 @@ namespace Imog3n {
         };
 
         Operation::Enum mOperation{Operation::None};
+
+        void RotateAround(const Input& input);
     };
 
 } // namespace

@@ -80,18 +80,18 @@ namespace Imog3n {
 			bgfx::setTexture(0, m_depthIdSampler, textureHandle);
 			//bgfx::submit(2, m_DepthId2ColorProgram);
 			mFSQuad.Render(2, m_DepthId2ColorProgram);
-#if 0
+
 			// plane helpers
 			bgfx::setViewRect(3, 0, 0, m_width, m_height);
 			bgfx::setViewFrameBuffer(3, { bgfx::kInvalidHandle });
 			//bgfx::setVertexBuffer(0, m_vbh);
 			bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_BLEND_ALPHA);
 			//auto textureHandle = bgfx::getTexture(m_depthIdFrameBuffer);
-			bgfx::setTexture(1, m_depthIdSampler, textureHandle);
-			bgfx::setTexture(0, m_SDFSampler, sdf.GetTexture(), BGFX_SAMPLER_U_CLAMP | BGFX_SAMPLER_V_CLAMP | BGFX_SAMPLER_W_CLAMP /*| BGFX_SAMPLER_MIN_POINT | BGFX_SAMPLER_MAG_POINT*/);
+			bgfx::setTexture(0, m_depthIdSampler, textureHandle);
+			//bgfx::setTexture(0, m_SDFSampler, sdf.GetTexture(), BGFX_SAMPLER_U_CLAMP | BGFX_SAMPLER_V_CLAMP | BGFX_SAMPLER_W_CLAMP /*| BGFX_SAMPLER_MIN_POINT | BGFX_SAMPLER_MAG_POINT*/);
 			//bgfx::submit(3, m_DepthId2PlaneHelpersProgram);
 			mFSQuad.Render(3, m_DepthId2PlaneHelpersProgram);
-#endif
+
 			mReadBackBitsValid = false;
         }
 
