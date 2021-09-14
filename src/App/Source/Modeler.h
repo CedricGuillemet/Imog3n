@@ -7,24 +7,29 @@
 #include "Primitives2SDF.h"
 #include "FSQuad.h"
 #include "SDFRenderer.h"
+#include "Operations.h"
 
 namespace Imog3n {
 
     class Modeler
     {
     public:
-        Modeler() :mPrimToSDF(mFSQuad), mSDFRenderer(mFSQuad) {}
+        Modeler() :mPrimToSDF(mFSQuad), mSDFRenderer(mFSQuad) {
+        }
 
         void Tick(const Input& input)
         {
             if (mDirty)
             {
-                const BoundingBox boundingBox = mPrimBatch.ComputeBoundingBox();
+                const BoundingBox boundingBox = mPrimBatch.ComputeWorldBoundingBox();
                 mSDF.SetBoundingBox(boundingBox);
                 mPrimToSDF.ComputeSDF(mPrimBatch, mSDF);
                 mDirty = false;
             }
-            mCamera.Tick(input, mSDFRenderer);
+            if(!mCamera.Tick(input, mSDFRenderer))
+            {
+                mDirty = mOperations.Tick(input, mSDFRenderer, mPrimBatch, mCamera);
+            }
         }
 
         void Render()
@@ -35,6 +40,7 @@ namespace Imog3n {
         void Resize(uint32_t width, uint32_t height)
         {
             mSDFRenderer.Resize(width, height);
+            mCamera.Resize(width, height);
         }
 
         void SetDirty()
@@ -49,6 +55,7 @@ namespace Imog3n {
         SDF mSDF;
         PrimToSDF mPrimToSDF;
         SDFRenderer mSDFRenderer;
+        Operations mOperations;
         bool mDirty{true};
     };
 

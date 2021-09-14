@@ -11,7 +11,7 @@ namespace Imog3n {
     public:
         Camera()
         {
-            mMatrix.Translate(Vec3(0.f,0.f,-6.f));
+            mMatrix.Translate(Vec3(5.f,5.f,-15.f));
         }
 
         const Mat4x4& GetMatrix() const
@@ -21,6 +21,14 @@ namespace Imog3n {
 
         bool Tick(const Input& input, SDFRenderer& sdfRenderer);
 
+        // in pixels
+        void GetWorldOriginAndDirection(const uint32_t screenX, const uint32_t screenY, Vec3& origin, Vec3& direction) const;
+
+        void Resize(uint32_t width, uint32_t height)
+        {
+            mWidth = width;
+            mHeight = height;
+        }
     private:
         Mat4x4 mMatrix{Identity};
 
@@ -39,6 +47,8 @@ namespace Imog3n {
         Operation::Enum mOperation{Operation::None};
 
         void RotateAround(const Input& input);
+
+        uint32_t mWidth{ 1 }, mHeight{ 1 };
     };
 
 } // namespace

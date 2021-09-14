@@ -43,9 +43,17 @@ namespace Imog3n {
 		UnionType::Enum mUnion{ UnionType::Add };
 
 
-		BoundingBox ComputeBoundingBox() const
+		BoundingBox ComputeWorldBoundingBox() const
 		{
-			return BoundingBox({ -1.f }, { 1.f });
+			BoundingBox res{ { FLT_MAX, FLT_MAX, FLT_MAX }, { -FLT_MAX, -FLT_MAX, -FLT_MAX } };
+
+			for (int i = 0;i<8;i++)
+			{
+				Vec3 p{i&1?-1.f:1.f, i&2?-1.f:1.f, i&4?-1.f:1.f};
+				p.TransformPoint(mMatrix);
+				res.Insert(p);
+			}
+			return res;
 		}
 	};
 
@@ -54,26 +62,33 @@ namespace Imog3n {
 	public:
 		PrimBatch()
 		{
+			mPrims.push_back({ Mat4x4::TranslationMatrix({0.f,1.f,0.f}), 0.1f });
+			mPrims.push_back({ Mat4x4::ScaleMatrix({0.5f,1.5f,0.5f}).Translate({5.f,2.f,0.f}), 0.5f });
+			mPrims.push_back({ Mat4x4::TranslationMatrix({10.f,0.f,0.f}), 1.f });
+			
 		}
 
-		BoundingBox ComputeBoundingBox() const
+		BoundingBox ComputeWorldBoundingBox() const
 		{
 			BoundingBox boundingBox({ FLT_MAX }, { -FLT_MAX });
 			for (const auto& prim : mPrims)
 			{
-				boundingBox.Insert(prim.ComputeBoundingBox());
+				boundingBox.Insert(prim.ComputeWorldBoundingBox());
 			}
 			boundingBox.MakeCubic();
-			boundingBox.Expand(0.01f);
+			boundingBox.Expand(0.1f);
 			return boundingBox;
+		}
+
+		void AddPrimitive(const Vec3& position)
+		{
+			mPrims.push_back({ Mat4x4::TranslationMatrix(position), 0.f });
 		}
 
 		const std::vector<Prim>& GetPrims() const { return mPrims; }
 	private:
 
-		std::vector<Prim> mPrims{
-			{}
-		};
+		std::vector<Prim> mPrims{};
 	};
 
 } // namespace

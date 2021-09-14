@@ -95,7 +95,13 @@ namespace Imog3n
             min.Min(boundingBox.min);
             max.Max(boundingBox.max);
         }
-        
+
+        void Insert(const Vec3& position)
+        {
+            min.Min(position);
+            max.Max(position);
+        }
+
         void MakeCubic()
         {
             float lx = max.x - min.x;
@@ -128,8 +134,8 @@ namespace Imog3n
             v[14] += translation.z;
             return *this;
         }
-
-        Mat4x4& Translation(const Vec3& translation);
+        static Mat4x4 TranslationMatrix(const Vec3& translation);
+        static Mat4x4 ScaleMatrix(const Vec3& scale);
 
         Mat4x4 operator * (const Mat4x4& v) const
         {
@@ -143,7 +149,7 @@ namespace Imog3n
         Vec3 Up() const { return { m[1][0], m[1][1], m[1][2] }; }
         Vec3 Direction() const { return { m[2][0], m[2][1], m[2][2] }; }
         Vec3 Translation() const { return { m[3][0], m[3][1], m[3][2] }; }
-
+        Mat4x4& NormalizeScales();
         void Set(const Vec3& right, const Vec3& up, const Vec3& direction, const Vec3& translation)
         {
             m[0][0] = right.x;
@@ -197,7 +203,6 @@ namespace Imog3n
         0.f, 1.f, 0.f, 0.f,
         0.f, 0.f, 1.f, 0.f,
         0.f, 0.f, 0.f, 1.f };
-
 
     inline float canardConvertFloat16ToNativeFloat(uint16_t value)
     {

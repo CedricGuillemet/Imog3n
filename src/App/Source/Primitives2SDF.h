@@ -100,6 +100,12 @@ namespace Imog3n {
 				const auto& prim = prims[i];
 				//Mat4x4 primMat = prim.mMatrix * worldToUnitCube;
 				Mat4x4 primMat = prim.mMatrix;
+				Vec3 primScale{
+					sqrtf(primMat.v[0] * primMat.v[0] + primMat.v[1] * primMat.v[1] + primMat.v[2] * primMat.v[2]),
+					sqrtf(primMat.v[4] * primMat.v[4] + primMat.v[5] * primMat.v[5] + primMat.v[6] * primMat.v[6]),
+					sqrtf(primMat.v[8] * primMat.v[8] + primMat.v[9] * primMat.v[9] + primMat.v[10] * primMat.v[10])
+				};
+				primMat.NormalizeScales();
 				float mat[16];
 				InvertMatrix(primMat.v, mat);
 				float* ptr = m_primitivesTextureData + 4 * 4 * i;
@@ -119,9 +125,9 @@ namespace Imog3n {
 				*ptr++ = mat[14];
 
 				*ptr++ = prim.mBlendFactor;
-				*ptr++ = sqrtf(primMat.v[0] * primMat.v[0] + primMat.v[1] * primMat.v[1] + primMat.v[2] * primMat.v[2]);
-				*ptr++ = sqrtf(primMat.v[4] * primMat.v[4] + primMat.v[5] * primMat.v[5] + primMat.v[6] * primMat.v[6]);
-				*ptr++ = sqrtf(primMat.v[8] * primMat.v[8] + primMat.v[9] * primMat.v[9] + primMat.v[10] * primMat.v[10]);
+				*ptr++ = primScale.x;
+				*ptr++ = primScale.y;
+				*ptr++ = primScale.z;
 			}
 			bgfx::updateTexture2D(m_primitivesTexture, 0, 0, 0, 0, 4, 256, bgfx::makeRef(m_primitivesTextureData, 4 * 256 * 4 * sizeof(float)));
 		}

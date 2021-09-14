@@ -5,6 +5,7 @@ $input v_texcoord0
 #include "Common.shader"
 
 uniform vec4 viewInfos;
+uniform mat4 cameraView;
 SAMPLER2D(depthIdSampler, 0);
 
 void main()
@@ -13,7 +14,8 @@ void main()
     vec4 depthId = texture2D(depthIdSampler, uv);
     float depth = depthId.x;
 
-    vec3 normal = normalize(vec3(depthId.zw, 1. - sqrt(depthId.z*depthId.z + depthId.w * depthId.w)));
+    // normal in view space
+    vec3 normal = normalize(vec3(depthId.zw, -1. + sqrt(depthId.z*depthId.z + depthId.w * depthId.w)));
 
     vec3 ambiant = vec3(0.2, 0.2, 0.2);
 
@@ -31,8 +33,10 @@ void main()
         vec3 albedo = vec3(1.0,0.8,0.6);
         
         vec3 lightColor = vec3(1.,1.,1.);
-        vec3 light = lightColor * max(dot(normalize(vec3(1.,1.,1.)), normal), 0.);
-        light += lightColor * max(dot(normalize(-vec3(1.,1.,1.)), normal), 0.) * 0.3;
+        vec3 lightDirection = normalize(vec3(1.,1.,1.));
+        vec3 wmormal = normalize(mul(cameraView, vec4(normal, 0.)).xyz);
+        vec3 light = lightColor * max(dot(lightDirection, wmormal), 0.)* 0.8;
+        light += lightColor * max(dot(-lightDirection, wmormal), 0.) * 0.3;
         light += ambiant;
         vec3 color = albedo * light;
         gl_FragColor = vec4(color, 1.0);

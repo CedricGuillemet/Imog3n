@@ -12,85 +12,88 @@ namespace Imog3n {
     public:
         SDFRenderer(const FSQuad& fsQuad) : mFSQuad(fsQuad)
         {
-			m_SDF2DepthIdProgram = LoadProgram("ScreenTriangle_vs", "SDF_DepthId_fs");
-			m_DepthId2ColorProgram = LoadProgram("ScreenTriangle_vs", "DepthId_Color_fs");
-			m_DepthId2PlaneHelpersProgram = LoadProgram("ScreenTriangle_vs", "DepthId_PlaneHelpers_fs");
+			mSDF2DepthIdProgram = LoadProgram("ScreenTriangle_vs", "SDF_DepthId_fs");
+			mDepthId2ColorProgram = LoadProgram("ScreenTriangle_vs", "DepthId_Color_fs");
+			mDepthId2PlaneHelpersProgram = LoadProgram("ScreenTriangle_vs", "DepthId_PlaneHelpers_fs");
 
-			m_SDFSampler = bgfx::createUniform("SDFSampler", bgfx::UniformType::Sampler);
-			m_depthIdSampler = bgfx::createUniform("depthIdSampler", bgfx::UniformType::Sampler);
-			m_cameraViewUniform = bgfx::createUniform("cameraView", bgfx::UniformType::Mat4);
+			mSDFSampler = bgfx::createUniform("SDFSampler", bgfx::UniformType::Sampler);
+			mDepthIdSampler = bgfx::createUniform("depthIdSampler", bgfx::UniformType::Sampler);
+			mCameraViewUniform = bgfx::createUniform("cameraView", bgfx::UniformType::Mat4);
 
-			m_boundMin = bgfx::createUniform("boundMin", bgfx::UniformType::Vec4);
-			m_boundRatio = bgfx::createUniform("boundRatio", bgfx::UniformType::Vec4);
+			mBoundMin = bgfx::createUniform("boundMin", bgfx::UniformType::Vec4);
+			mBoundRatio = bgfx::createUniform("boundRatio", bgfx::UniformType::Vec4);
+			mBoundScale = bgfx::createUniform("boundScale", bgfx::UniformType::Vec4);
 
-			m_viewInfosUniform = bgfx::createUniform("viewInfos", bgfx::UniformType::Vec4);
+			mViewInfosUniform = bgfx::createUniform("viewInfos", bgfx::UniformType::Vec4);
         }
 
 		void Resize(uint32_t width, uint32_t height)
 		{
-			if (m_width != width || m_height != height)
+			if (mWidth != width || mHeight != height)
 			{
-				m_width = width;
-				m_height = height;
-				if (bgfx::isValid(m_depthIdTexture))
+				mWidth = width;
+				mHeight = height;
+				if (bgfx::isValid(mDepthIdTexture))
 				{
-					bgfx::destroy(m_depthIdTexture);
+					bgfx::destroy(mDepthIdTexture);
 				}
-				m_depthIdTexture = CreateReadBackTexture(m_width, m_height);
+				mDepthIdTexture = CreateReadBackTexture(mWidth, mHeight);
 
-				if (bgfx::isValid(m_depthIdFrameBuffer))
+				if (bgfx::isValid(mDepthIdFrameBuffer))
 				{
-					bgfx::destroy(m_depthIdFrameBuffer);
+					bgfx::destroy(mDepthIdFrameBuffer);
 				}
-				m_depthIdFrameBuffer = CreateDepthIdFrameBuffer(m_width, m_height);
+				mDepthIdFrameBuffer = CreateDepthIdFrameBuffer(mWidth, mHeight);
 
-				m_readBackBits.resize(m_width * m_height * 4);
+				mReadBackBits.resize(mWidth * mHeight * 4);
 			}
 		}
 
         void Render(const SDF& sdf, const Camera& camera)
         {
-			float viewInfos[4] = { float(m_height) / float(m_width), 0.f, 0.f, 0.f };
-			bgfx::setUniform(m_viewInfosUniform, viewInfos);
+			float viewInfos[4] = { float(mHeight) / float(mWidth), 0.f, 0.f, 0.f };
+			bgfx::setUniform(mViewInfosUniform, viewInfos);
 
-			bgfx::setUniform(m_cameraViewUniform, camera.GetMatrix().v);
+			bgfx::setUniform(mCameraViewUniform, camera.GetMatrix().v);
 
 			const auto& boudingBox = sdf.GetBoundingBox();
-			float boundMin[4] = { boudingBox.min.x, boudingBox.min.y, boudingBox.min.z, 0.f};
-			float boundRatio[4] = { 1.f / (boudingBox.max.x - boudingBox.min.x), 1.f / (boudingBox.max.y - boudingBox.min.y), 1.f / (boudingBox.max.z - boudingBox.min.z), 0.f };
-			bgfx::setUniform(m_boundMin, boundMin);
-			bgfx::setUniform(m_boundRatio, boundRatio);
+			const float boundMin[4] = { boudingBox.min.x, boudingBox.min.y, boudingBox.min.z, 0.f};
+			const float boundRatio[4] = { 1.f / (boudingBox.max.x - boudingBox.min.x), 1.f / (boudingBox.max.y - boudingBox.min.y), 1.f / (boudingBox.max.z - boudingBox.min.z), 0.f };
+			const float boundScale[4] = { boudingBox.max.x - boudingBox.min.x, boudingBox.max.y - boudingBox.min.y, boudingBox.max.z - boudingBox.min.z, 0.f };
+			bgfx::setUniform(mBoundMin, boundMin);
+			bgfx::setUniform(mBoundRatio, boundRatio);
+			bgfx::setUniform(mBoundScale, boundScale);
 
-			bgfx::setViewRect(1, 0, 0, m_width, m_height);
+			bgfx::setViewRect(1, 0, 0, mWidth, mHeight);
 			bgfx::setViewClear(1, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 255U, 1.0f, 0);
-			bgfx::setViewFrameBuffer(1, m_depthIdFrameBuffer);
+			bgfx::setViewFrameBuffer(1, mDepthIdFrameBuffer);
 
 			//bgfx::setVertexBuffer(0, m_vbh);
 			bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_DEPTH_TEST_LEQUAL | BGFX_STATE_WRITE_Z);
-			bgfx::setTexture(0, m_SDFSampler, sdf.GetTexture(), BGFX_SAMPLER_U_CLAMP | BGFX_SAMPLER_V_CLAMP | BGFX_SAMPLER_W_CLAMP /*| BGFX_SAMPLER_MIN_POINT | BGFX_SAMPLER_MAG_POINT*/);
+			bgfx::setTexture(0, mSDFSampler, sdf.GetTexture(), BGFX_SAMPLER_U_CLAMP | BGFX_SAMPLER_V_CLAMP | BGFX_SAMPLER_W_CLAMP /*| BGFX_SAMPLER_MIN_POINT | BGFX_SAMPLER_MAG_POINT*/);
 			//bgfx::submit(1, m_SDF2DepthIdProgram);
-			mFSQuad.Render(1, m_SDF2DepthIdProgram);
+			mFSQuad.Render(1, mSDF2DepthIdProgram);
 
 			// depth id to color
-			bgfx::setViewRect(2, 0, 0, m_width, m_height);
+			bgfx::setViewRect(2, 0, 0, mWidth, mHeight);
 			bgfx::setViewFrameBuffer(2, { bgfx::kInvalidHandle });
 			//bgfx::setVertexBuffer(0, m_vbh);
 			bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A);
-			auto textureHandle = bgfx::getTexture(m_depthIdFrameBuffer);
-			bgfx::setTexture(0, m_depthIdSampler, textureHandle);
+			auto textureHandle = bgfx::getTexture(mDepthIdFrameBuffer);
+			bgfx::setTexture(0, mDepthIdSampler, textureHandle);
 			//bgfx::submit(2, m_DepthId2ColorProgram);
-			mFSQuad.Render(2, m_DepthId2ColorProgram);
+			mFSQuad.Render(2, mDepthId2ColorProgram);
 
 			// plane helpers
-			bgfx::setViewRect(3, 0, 0, m_width, m_height);
+			bgfx::setViewRect(3, 0, 0, mWidth, mHeight);
 			bgfx::setViewFrameBuffer(3, { bgfx::kInvalidHandle });
 			//bgfx::setVertexBuffer(0, m_vbh);
 			bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_BLEND_ALPHA);
 			//auto textureHandle = bgfx::getTexture(m_depthIdFrameBuffer);
-			bgfx::setTexture(0, m_depthIdSampler, textureHandle);
+			bgfx::setTexture(0, mDepthIdSampler, textureHandle);
 			//bgfx::setTexture(0, m_SDFSampler, sdf.GetTexture(), BGFX_SAMPLER_U_CLAMP | BGFX_SAMPLER_V_CLAMP | BGFX_SAMPLER_W_CLAMP /*| BGFX_SAMPLER_MIN_POINT | BGFX_SAMPLER_MAG_POINT*/);
 			//bgfx::submit(3, m_DepthId2PlaneHelpersProgram);
-			mFSQuad.Render(3, m_DepthId2PlaneHelpersProgram);
+			mFSQuad.Render(3, mDepthId2PlaneHelpersProgram);
 
 			mReadBackBitsValid = false;
         }
@@ -103,7 +106,7 @@ namespace Imog3n {
 				mReadBackBitsValid = true;
 			}
 
-			uint16_t* ptr = m_readBackBits.data() + y * m_width * 4 + x * 4;
+			uint16_t* ptr = mReadBackBits.data() + (mHeight - y) * mWidth * 4 + x * 4;
 			*values++ = canardConvertFloat16ToNativeFloat(*ptr++);
 			*values++ = canardConvertFloat16ToNativeFloat(*ptr++);
 			*values++ = canardConvertFloat16ToNativeFloat(*ptr++);
@@ -111,33 +114,34 @@ namespace Imog3n {
 		}
 		
     private:
-		bgfx::ProgramHandle m_SDF2DepthIdProgram{ bgfx::kInvalidHandle };
-		bgfx::ProgramHandle m_DepthId2ColorProgram{ bgfx::kInvalidHandle };
-		bgfx::ProgramHandle m_DepthId2PlaneHelpersProgram{ bgfx::kInvalidHandle };
+		bgfx::ProgramHandle mSDF2DepthIdProgram{ bgfx::kInvalidHandle };
+		bgfx::ProgramHandle mDepthId2ColorProgram{ bgfx::kInvalidHandle };
+		bgfx::ProgramHandle mDepthId2PlaneHelpersProgram{ bgfx::kInvalidHandle };
 
-		bgfx::UniformHandle m_SDFSampler{ bgfx::kInvalidHandle };
-		bgfx::UniformHandle m_depthIdSampler{ bgfx::kInvalidHandle };
-		bgfx::UniformHandle m_cameraViewUniform{ bgfx::kInvalidHandle };
-		bgfx::UniformHandle m_boundMin{ bgfx::kInvalidHandle };
-		bgfx::UniformHandle m_boundRatio{ bgfx::kInvalidHandle };
-		bgfx::UniformHandle m_viewInfosUniform{ bgfx::kInvalidHandle };
+		bgfx::UniformHandle mSDFSampler{ bgfx::kInvalidHandle };
+		bgfx::UniformHandle mDepthIdSampler{ bgfx::kInvalidHandle };
+		bgfx::UniformHandle mCameraViewUniform{ bgfx::kInvalidHandle };
+		bgfx::UniformHandle mBoundMin{ bgfx::kInvalidHandle };
+		bgfx::UniformHandle mBoundRatio{ bgfx::kInvalidHandle };
+		bgfx::UniformHandle mBoundScale{ bgfx::kInvalidHandle };
+		bgfx::UniformHandle mViewInfosUniform{ bgfx::kInvalidHandle };
 
-		bgfx::FrameBufferHandle m_depthIdFrameBuffer{ bgfx::kInvalidHandle };
-		bgfx::TextureHandle m_depthIdTexture{ bgfx::kInvalidHandle };
+		bgfx::FrameBufferHandle mDepthIdFrameBuffer{ bgfx::kInvalidHandle };
+		bgfx::TextureHandle mDepthIdTexture{ bgfx::kInvalidHandle };
 
-		std::vector<uint16_t> m_readBackBits;
+		std::vector<uint16_t> mReadBackBits;
 
         const FSQuad& mFSQuad;
 
-		uint32_t m_width{}, m_height{};
+		uint32_t mWidth{}, mHeight{};
 		bool mReadBackBitsValid{false};
 
 
 		void GetTextureBits()
 		{
- 			auto sourceTextureHandle = bgfx::getTexture(m_depthIdFrameBuffer);
-			bgfx::blit(4, m_depthIdTexture, 0, 0, sourceTextureHandle);
-			auto frameNumber = bgfx::readTexture(m_depthIdTexture, m_readBackBits.data());
+ 			auto sourceTextureHandle = bgfx::getTexture(mDepthIdFrameBuffer);
+			bgfx::blit(4, mDepthIdTexture, 0, 0, sourceTextureHandle);
+			auto frameNumber = bgfx::readTexture(mDepthIdTexture, mReadBackBits.data());
 			while (bgfx::frame() != frameNumber) {}
 		}
 

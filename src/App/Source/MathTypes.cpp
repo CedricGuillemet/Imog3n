@@ -5,17 +5,6 @@
 
 namespace Imog3n
 {
-
-
-    Mat4x4& Mat4x4::Translation(const Vec3& translation)
-    {
-        *this = Identity;
-        v[12] = translation.x;
-        v[13] = translation.y;
-        v[14] = translation.z;
-        return *this;
-    }
-
     void Mat4x4::RotationAxis(const Vec3& axis, float angle)
     {
         float length2 = axis.LengthSquared();
@@ -58,6 +47,37 @@ namespace Imog3n
         m[3][3] = 1.f;
     }
 
+    Mat4x4 Mat4x4::TranslationMatrix(const Vec3& translation)
+    {
+        Mat4x4 res{ Identity };
+        res.v[12] = translation.x;
+        res.v[13] = translation.y;
+        res.v[14] = translation.z;
+        return res;
+    }
+
+    Mat4x4 Mat4x4::ScaleMatrix(const Vec3& scale)
+    {
+        Mat4x4 res{ Identity };
+        res.v[0] = scale.x;
+        res.v[5] = scale.y;
+        res.v[10] = scale.z;
+        return res;
+    }
+
+    Mat4x4& Mat4x4::NormalizeScales()
+    {
+        Vec3& right = *(Vec3*)&m[0][0];
+        Vec3& up = *(Vec3*)&m[1][0];
+        Vec3& dir = *(Vec3*)&m[2][0];
+
+        right.Normalize();
+        up.Normalize();
+        dir.Normalize();
+
+        return *this;
+    }
+
     void Vec3::TransformPoint(const Mat4x4& matrix)
     {
         Vec3 out;
@@ -87,5 +107,7 @@ namespace Imog3n
         z = out.z;
         //w = out.w;
     }
+
+
 
 } // namespace

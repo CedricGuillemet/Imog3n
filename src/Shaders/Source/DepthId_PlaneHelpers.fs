@@ -24,7 +24,8 @@ float GetDistance(vec4 plan, vec3 o, vec3 d)
     float dist = GetSurfaceDistance(plan, o);
     if (difPerUnit >= 0. || dist <= 0.)
     {
-        return 99999.;
+        discard;
+        return 9999.;
     }
     return dist / abs(difPerUnit);
 }
@@ -74,7 +75,7 @@ void main()
             uv += vec2(float(x), float(y)) * vec2(1., ratio) * 0.0005;
             vec3 rd = mul(cameraView, vec4(normalize(vec3(uv.x*2. -1., (uv.y-0.5) * (ratio * 2.), 1.)), 0.)).xyz;
 
-            vec4 debugPlan = vec4(0., 1., 0., -1.);
+            vec4 debugPlan = vec4(0., 1., 0., 0.);
 
             float distToPlan = GetDistance(debugPlan, ro, rd);
 
@@ -87,7 +88,7 @@ void main()
 
             vec4 localColor = vec4(g, g, g, 1.);
             localColor = mix(vec4(0.2,0.2,0.2,1.0), localColor, max(mix(1., 0., length(pos.xz) * 0.02), 0.)); // attn
-            if (depth > 8000. && distToPlan < 8000.)
+            if (distToPlan < depth)
             {
                 sum += 1.;
                 color += localColor;

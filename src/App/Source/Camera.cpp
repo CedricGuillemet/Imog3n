@@ -52,14 +52,34 @@ namespace Imog3n {
         return false;
     }
 
+    void Camera::GetWorldOriginAndDirection(const uint32_t screenX, const uint32_t screenY, Vec3& origin, Vec3& direction) const
+    {
+        float u = float(screenX) / float(mWidth);
+        float v = float(screenY) / float(mHeight);
+        u = 1.f - u;
+        v = 1.f - v;
+
+        float ratio = float(mHeight) / float(mWidth);
+
+        //vec3 ro = mul(cameraView, vec4(0., 0., 0., 1.)).xyz;
+        //vec3 rd = mul(cameraView, vec4(normalize(vec3(uv.x * 2. - 1., (uv.y - 0.5) * (ratio * 2.), 1.)), 0.)).xyz;
+
+        origin = Vec3(0.f);
+        origin.TransformPoint(mMatrix);
+
+        direction = Vec3(u * 2.f - 1.f, (v - 0.5f) * (ratio * 2.f), 1.f);
+        direction.Normalize();
+        direction.TransformVector(mMatrix);
+    }
+
     void Camera::RotateAround(const Input& input)
     {
         Mat4x4 ry, mv1, mv2, rx;
         ry.RotationAxis(Vec3::Y(), -input.mDeltaX * 0.01f);
         rx.RotationAxis(ry.Right(), input.mDeltaY * 0.01f);
         
-        mv1.Translation({0.f, 0.f, -6.f});
-        mv2.Translation({ 0.f, 0.f, 6.f });
+        mv1 = Mat4x4::TranslationMatrix({0.f, 0.f, -16.f});
+        mv2 = Mat4x4::TranslationMatrix({ 0.f, 0.f, 16.f });
         Mat4x4 fullRot = mv1 * rx * ry * mv2 * mMatrix;
         Vec3 direction{0.f,0.f,1.f};
         direction.TransformVector(fullRot);
