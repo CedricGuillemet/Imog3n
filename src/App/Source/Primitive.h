@@ -85,7 +85,18 @@ namespace Imog3n {
 			mPrims.push_back({ Mat4x4::TranslationMatrix(position), 0.f });
 		}
 
+		void AllocatePrimitives(uint32_t count, uint32_t& firstPrimitive, uint32_t& lastPrimitive)
+		{
+			firstPrimitive = static_cast<uint32_t>(mPrims.size());
+			lastPrimitive = firstPrimitive + count -1;
+			mPrims.resize(mPrims.size() + count);
+		}
+
 		const std::vector<Prim>& GetPrims() const { return mPrims; }
+		Prim& TouchPrim(uint32_t primIndex) 
+		{ 
+			return mPrims[primIndex]; 
+		}
 	private:
 
 		std::vector<Prim> mPrims{};

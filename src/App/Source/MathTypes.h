@@ -21,6 +21,16 @@ namespace Imog3n
 
         float x, y, z;
 
+        Vec3 operator - () const
+        {
+            return {-x, -y, -z};
+        }
+
+        Vec3 operator - (const Vec3& v) const
+        {
+            return { x - v.x, y - v.y, z - v.z };
+        }
+
         void Min(const Vec3& value)
         {
             x = std::min(x, value.x);
@@ -65,6 +75,11 @@ namespace Imog3n
 
         void TransformVector(const Mat4x4& matrix);
         void TransformPoint(const Mat4x4& matrix);
+
+        float Dot(const Vec3& v) const
+        {
+            return (x * v.x) + (y * v.y) + (z * v.z);
+        }
     };
 
     inline Vec3 operator * (const Vec3& a, const float v) 
