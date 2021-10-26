@@ -128,34 +128,6 @@ public:
 				);
 
 
-			ImGui::SetNextWindowPos(
-				  ImVec2(m_width - m_width / 5.0f - 10.0f, 10.0f)
-				, ImGuiCond_FirstUseEver
-				);
-			ImGui::SetNextWindowSize(
-				  ImVec2(m_width / 5.0f, m_height / 3.5f)
-				, ImGuiCond_FirstUseEver
-				);
-			ImGui::Begin("Settings"
-				, NULL
-				, 0
-				);
-
-			ImGui::Text("Primitive topology:");
-            if (ImGui::Button("Fit Nodes"))
-            {
-                FitNodes();
-            }
-            ImGui::SameLine();
-            if (ImGui::Button("Fit Selected Nodes"))
-            {
-                FitSelectedNodes();
-            }
-            EditOptions();
-			ImGui::End();
-
-			ShowNodeEditor();
-
 			imguiEndFrame();
 
 			float time = (float)( (bx::getHPCounter()-m_timeOffset)/double(bx::getHPFrequency() ) );
