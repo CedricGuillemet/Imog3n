@@ -4,6 +4,7 @@
 #include "Node.h"
 #include "Shaders.h"
 #include "UI.h"
+#include "Pipes.h"
 
 namespace Imog3n
 {
@@ -40,7 +41,7 @@ namespace Imog3n
 		1, 3, 2,
 	};
 
-
+Pipes pipes;
 
 class Imog3nApp : public entry::AppI
 {
@@ -99,8 +100,50 @@ public:
 		);
 
 		// Create program from shaders.
-		m_program = LoadProgram("Node_vs", "Circle_fs");
+		//m_program = LoadProgram("Node_vs", "Circle_fs");
+		m_pipeProgram = LoadProgram("PipeDeform_vs", "PipeDeform_fs");
 
+		Pipe* pipe = pipes.NewPipe();
+		PipeConstraint constraints;
+		constraints.start = Mat4x4::TranslationMatrix({0.f, 0.f, 0.f});
+		constraints.end = Mat4x4::TranslationMatrix({ 10.f, 10.f, 0.f });
+		constraints.radius = 1.f;
+		constraints.controlPoints = { {5.f, 5.f, 10.f} };
+		pipe->Build(constraints);
+
+		auto sliceMesh = pipes.GenerateSliceMesh();
+		auto textureData = pipes.GetTexture(256);
+		const bgfx::Memory* mem{ bgfx::makeRef(textureData.data(), static_cast<uint32_t>(textureData.size())) };
+
+		m_pipePath = bgfx::createTexture2D(1024, 1024, false, 1, bgfx::TextureFormat::RGBA32F, 0, mem);
+
+		m_pipeLayout.begin()
+			.add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
+			.add(bgfx::Attrib::Normal, 3, bgfx::AttribType::Float)
+			.end();
+
+		m_pipeVbh = bgfx::createVertexBuffer(
+			bgfx::makeRef(sliceMesh.vertices.data(), static_cast<uint32_t>(sliceMesh.vertices.size() * sizeof(Vec3) * 2))
+			, m_pipeLayout
+		);
+
+		// Create static index buffer for triangle list rendering.
+		m_pipeIbh = bgfx::createIndexBuffer(
+			// Static data can be passed with bgfx::makeRef
+			bgfx::makeRef(sliceMesh.indices.data(), sizeof(sliceMesh.indices.size() * sizeof(uint16_t)))
+		);
+
+		Mat4x4 view, projection, viewProjection;
+
+		view.LookAtLH({ 10,10,10 }, {0,0,0}, {0,1,0});
+		projection.PerspectiveFovLH(53.f, 16.f/9.f, 0.01f, 100.f);
+		viewProjection = view * projection;
+
+		mViewProjectionHandle = bgfx::createUniform("u_viewProjection", bgfx::UniformType::Mat4, 1);
+		mUVRange = bgfx::createUniform("u_uvRange", bgfx::UniformType::Vec4, 1);
+
+		
+		bgfx::setUniform(mViewProjectionHandle, viewProjection.GetFloatPtr());
 	}
 
 	virtual int shutdown() override
@@ -145,15 +188,18 @@ public:
 			uint64_t state = BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A;
 
 			// Set vertex and index buffer.
-			bgfx::setVertexBuffer(0, m_vbh);
-			bgfx::setIndexBuffer(m_ibh);
+			bgfx::setVertexBuffer(0, m_pipeVbh);
+			bgfx::setIndexBuffer(m_pipeIbh);
 
 			// Set render states.
 			bgfx::setState(state);
 
-			// Submit primitive for rendering to view 0.
-			bgfx::submit(0, m_program);
-
+			for (size_t i = 0; i < 10; i++)
+			{
+				float uvRange[4] = { 0.f, 0.f, 0.f, 0.f };
+				bgfx::setUniform(mUVRange, uvRange);
+				bgfx::submit(0, m_program);
+			}
 			// Advance to next frame. Rendering thread will be kicked to
 			// process submitted rendering primitives.
 			bgfx::frame();
@@ -176,6 +222,14 @@ public:
 	bgfx::VertexBufferHandle m_vbh;
 	bgfx::IndexBufferHandle m_ibh;
 	bgfx::ProgramHandle m_program;
+
+	// pipe
+	bgfx::TextureHandle m_pipePath;
+	bgfx::VertexLayout m_pipeLayout;
+	bgfx::VertexBufferHandle m_pipeVbh;
+	bgfx::IndexBufferHandle m_pipeIbh;
+	bgfx::UniformHandle mViewProjectionHandle, mUVRange;
+	bgfx::ProgramHandle m_pipeProgram;
 };
 
 } // namespace

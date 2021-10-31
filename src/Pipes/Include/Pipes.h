@@ -9,7 +9,7 @@ struct PipeConstraint
     Mat4x4 start;
     Mat4x4 end;
     float radius;
-    uint16_t controlPointCount;
+    std::vector<Vec3> controlPoints; // except start and finish
 };
 
 class Pipe
@@ -38,6 +38,8 @@ public:
     verlet iteration count
     */
     const std::vector<Vec3>& GetControlPoints() const { return mControlPoints; }
+
+    float GetLength(uint16_t precision, std::vector<float>& steps) const;
 private:
     Pipe();
     friend class Pipes;
@@ -46,7 +48,12 @@ private:
 
 struct SliceMesh
 {
-    std::vector<Vec3> positions;
+    struct SliceMeshVertex
+    {
+        Vec3 position;
+        Vec3 normal;
+    };
+    std::vector<SliceMeshVertex> vertices;
     std::vector<Vec3> normals;
     std::vector<uint16_t> indices;
 };

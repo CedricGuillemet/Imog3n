@@ -7,6 +7,11 @@
 
 static const float PI = 3.141592f;
 
+template<typename T> T Lerp(T A, T B, float t)
+{
+    return A + (B - A) * t;
+}
+
 //namespace Imog3n
 //{
     struct Mat4x4;
@@ -34,14 +39,9 @@ static const float PI = 3.141592f;
         }
     };
 
-    Vec4 Lerp(const Vec4& A, const Vec4& B, float t)
+    inline Vec4 Lerp(const Vec4& A, const Vec4& B, float t)
     {
-        return {
-            A.x + (B.x - A.x) * t,
-            A.y + (B.y - A.y) * t,
-            A.z + (B.z - A.z) * t,
-            A.w + (B.w - A.w) * t
-        };
+        return ::Lerp(A, B, t);
     }
     struct Vec3
     {
@@ -100,6 +100,16 @@ static const float PI = 3.141592f;
             z *= invLength;
             return *this;
         }
+
+        Vec3& Normalize(const Vec3& source)
+        {
+            const float invLength = 1.f / source.Length();
+            x = source.x * invLength;
+            y = source.y * invLength;
+            z = source.z * invLength;
+            return *this;
+        }
+
         static const Vec3 X() { return { 1.f, 0.f, 0.f }; }
         static const Vec3 Y() { return { 0.f, 1.f, 0.f }; }
         static const Vec3 Z() { return { 0.f, 0.f, 1.f }; }
@@ -110,6 +120,14 @@ static const float PI = 3.141592f;
         float Dot(const Vec3& v) const
         {
             return (x * v.x) + (y * v.y) + (z * v.z);
+        }
+
+        Vec3& Cross(const Vec3& v1, const Vec3& v2)
+        {
+            x = v1.y * v2.z - v1.z * v2.y;
+            y = v1.z * v2.x - v1.x * v2.z;
+            z = v1.x * v2.y - v1.y * v2.x;
+            return *this;
         }
     };
 
@@ -188,13 +206,14 @@ static const float PI = 3.141592f;
         static Mat4x4 TranslationMatrix(const Vec3& translation);
         static Mat4x4 ScaleMatrix(const Vec3& scale);
 
+        const float* GetFloatPtr() const { return &v[0]; }
+
         Mat4x4 operator * (const Mat4x4& v) const
         {
             Mat4x4 res;
             FPU_MatrixF_x_MatrixF(this->v, v.v, res.v);
             return res;
         }
-
 
         Vec3 Right() const { return {m[0][0], m[0][1], m[0][2]}; }
         Vec3 Up() const { return { m[1][0], m[1][1], m[1][2] }; }
@@ -248,6 +267,12 @@ static const float PI = 3.141592f;
         }
 
         void RotationAxis(const Vec3& axis, float angle);
+
+        void LookAtRH(const Vec3& eye, const Vec3& at, const Vec3& up);
+        void LookAtLH(const Vec3& eye, const Vec3& at, const Vec3& up);
+        void Orient(const Vec3& eye, const Vec3& at, const Vec3& up);
+        void PerspectiveFovLH(const float fovy, const float aspect, const float zn, const float zf);
+        void OrthoOffCenterLH(const float l, float r, float b, const float t, float zn, const float zf);
     };
 
     constexpr Mat4x4 Identity = { 1.f, 0.f, 0.f, 0.f,
@@ -276,5 +301,15 @@ static const float PI = 3.141592f;
         out.u |= (value & 0x8000UL) << 16;
 
         return out.f;
+    }
+
+    template<typename T> T QuadradicBezier(T A, T B, T C, float t)
+    {
+        return Lerp( Lerp(A, B, t), Lerp(B, C, t), t);
+    }
+
+    template<typename T> T QuadradicBezierDfDt(T A, T B, T C, float t)
+    {
+        return Lerp(B, C, t) - Lerp(A, B, t);
     }
 //} // namespace
