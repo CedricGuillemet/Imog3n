@@ -5,6 +5,7 @@
 #include "Shaders.h"
 #include "UI.h"
 #include "Pipes.h"
+#include "GraidentBuilder.h"
 
 namespace Imog3n
 {
@@ -55,17 +56,17 @@ public:
 	{
 		Args args(_argc, _argv);
 
-		m_width  = _width;
+		m_width = _width;
 		m_height = _height;
-		m_debug  = BGFX_DEBUG_NONE;
-		m_reset  = BGFX_RESET_VSYNC;
+		m_debug = BGFX_DEBUG_NONE;
+		m_reset = BGFX_RESET_VSYNC;
 
 		bgfx::Init init;
-		init.type     = args.m_type;
+		init.type = args.m_type;
 		init.vendorId = args.m_pciId;
-		init.resolution.width  = m_width;
+		init.resolution.width = m_width;
 		init.resolution.height = m_height;
-		init.resolution.reset  = m_reset;
+		init.resolution.reset = m_reset;
 		bgfx::init(init);
 
 		// Enable debug text.
@@ -73,16 +74,16 @@ public:
 
 		// Set view 0 clear state.
 		bgfx::setViewClear(0
-			, BGFX_CLEAR_COLOR|BGFX_CLEAR_DEPTH
+			, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH
 			, 0
 			, 1.0f
 			, 0
-			);
+		);
 
 		m_timeOffset = bx::getHPCounter();
 
 		imguiCreate();
-        
+
 		// Create vertex stream declaration.
 		PosColorVertex::init();
 
@@ -105,17 +106,17 @@ public:
 
 		Pipe* pipe = pipes.NewPipe();
 		PipeConstraint constraints;
-		constraints.start = Mat4x4::TranslationMatrix({0.f, 0.f, 0.f});
-		constraints.end = Mat4x4::TranslationMatrix({ 10.f, 10.f, 0.f });
+		constraints.start = Mat4x4::TranslationMatrix({ 0.f, 0.f, 0.f });
+		constraints.end = Mat4x4::TranslationMatrix({ 0.f, 0.f, 10.f });
 		constraints.radius = 1.f;
-		constraints.controlPoints = { {5.f, 5.f, 10.f} };
+		constraints.controlPoints = { {15.f, 0.f, 5.f} };
 		pipe->Build(constraints);
 
-		auto sliceMesh = pipes.GenerateSliceMesh();
-		auto textureData = pipes.GetTexture(256);
-		const bgfx::Memory* mem{ bgfx::makeRef(textureData.data(), static_cast<uint32_t>(textureData.size())) };
+		static auto sliceMesh = pipes.GenerateSliceMesh();
+		static auto textureData = pipes.GetTexture(256);
+		const bgfx::Memory* mem{ bgfx::makeRef(textureData.data(), static_cast<uint32_t>(textureData.size() * sizeof(float))) };
 
-		m_pipePath = bgfx::createTexture2D(1024, 1024, false, 1, bgfx::TextureFormat::RGBA32F, 0, mem);
+		m_pipePath = bgfx::createTexture2D(256, 256, false, 1, bgfx::TextureFormat::RGBA32F, 0, mem);
 
 		m_pipeLayout.begin()
 			.add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
@@ -127,23 +128,25 @@ public:
 			, m_pipeLayout
 		);
 
-		// Create static index buffer for triangle list rendering.
 		m_pipeIbh = bgfx::createIndexBuffer(
-			// Static data can be passed with bgfx::makeRef
-			bgfx::makeRef(sliceMesh.indices.data(), sizeof(sliceMesh.indices.size() * sizeof(uint16_t)))
+			bgfx::makeRef(sliceMesh.indices.data(), static_cast<uint32_t>(sliceMesh.indices.size() * sizeof(uint16_t)))
 		);
-
-		Mat4x4 view, projection, viewProjection;
-
-		view.LookAtLH({ 10,10,10 }, {0,0,0}, {0,1,0});
-		projection.PerspectiveFovLH(53.f, 16.f/9.f, 0.01f, 100.f);
-		viewProjection = view * projection;
 
 		mViewProjectionHandle = bgfx::createUniform("u_viewProjection", bgfx::UniformType::Mat4, 1);
 		mUVRange = bgfx::createUniform("u_uvRange", bgfx::UniformType::Vec4, 1);
+		mPathSampler = bgfx::createUniform("pathSampler", bgfx::UniformType::Sampler, 1);
+		mLightSampler = bgfx::createUniform("lightSampler", bgfx::UniformType::Sampler, 1);
 
-		
-		bgfx::setUniform(mViewProjectionHandle, viewProjection.GetFloatPtr());
+		static std::vector<ColorRGBA8> gradient = Build({ 
+			{{0x4F, 0x62, 0x7C, 0x55}, 0.f},
+			{{0x4F, 0x62, 0x7C, 0xFF}, 0.45f},
+			{{0x84, 0x94, 0xAA, 0xFF}, 0.55f},
+			{{0xCF, 0xD6, 0xDF, 0xFF}, 0.85f},
+			{{0xDB, 0xDF, 0xE5, 0xFF}, 1.f},
+			}, 256);
+
+		const bgfx::Memory* memGradient{ bgfx::makeRef(gradient.data(), static_cast<uint32_t>(gradient.size() * sizeof(ColorRGBA8))) };
+		m_lightColor = bgfx::createTexture2D(256, 1, false, 1, bgfx::TextureFormat::RGBA8, 0, memGradient);
 	}
 
 	virtual int shutdown() override
@@ -185,20 +188,37 @@ public:
 			bgfx::discard();
             bgfx::touch(0);
 
-			uint64_t state = BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A;
 
-			// Set vertex and index buffer.
-			bgfx::setVertexBuffer(0, m_pipeVbh);
-			bgfx::setIndexBuffer(m_pipeIbh);
+			Mat4x4 view, projection, viewProjection;
 
-			// Set render states.
-			bgfx::setState(state);
+			view.LookAtLH({ -15, 10, 5 }, { 15, 0, 5 }, { 0, 1, 0 });
+			projection.PerspectiveFovLH(0.7f, 16.f / 9.f, 0.01f, 100.f);
+			viewProjection = view * projection;
+			bgfx::setUniform(mViewProjectionHandle, viewProjection.GetFloatPtr());
 
-			for (size_t i = 0; i < 10; i++)
+
+			uint64_t state = BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_CULL_CCW;
+
+			static const int instanceCount = 20;
+			float step = 1.f / float(instanceCount);
+			float uvRange[4] = { 0.f, 0.f, 0.f, 0.f };
+
+			
+			for (size_t i = 0; i < instanceCount; i++)
 			{
-				float uvRange[4] = { 0.f, 0.f, 0.f, 0.f };
+				bgfx::setTexture(0, mPathSampler, m_pipePath, BGFX_SAMPLER_U_CLAMP | BGFX_SAMPLER_V_CLAMP);
+				bgfx::setTexture(1, mLightSampler, m_lightColor);
+				bgfx::setVertexBuffer(0, m_pipeVbh);
+				bgfx::setState(state);
+
+				bgfx::setIndexBuffer(m_pipeIbh);
+				
+				uvRange[2] = uvRange[0] + step;
+
 				bgfx::setUniform(mUVRange, uvRange);
-				bgfx::submit(0, m_program);
+				bgfx::submit(0, m_pipeProgram);
+
+				uvRange[0] = uvRange[2];
 			}
 			// Advance to next frame. Rendering thread will be kicked to
 			// process submitted rendering primitives.
@@ -225,10 +245,11 @@ public:
 
 	// pipe
 	bgfx::TextureHandle m_pipePath;
+	bgfx::TextureHandle m_lightColor;
 	bgfx::VertexLayout m_pipeLayout;
 	bgfx::VertexBufferHandle m_pipeVbh;
 	bgfx::IndexBufferHandle m_pipeIbh;
-	bgfx::UniformHandle mViewProjectionHandle, mUVRange;
+	bgfx::UniformHandle mViewProjectionHandle, mUVRange, mPathSampler, mLightSampler;
 	bgfx::ProgramHandle m_pipeProgram;
 };
 

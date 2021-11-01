@@ -27,6 +27,7 @@ float Pipe::GetLength(uint16_t precision, std::vector<float>& steps) const
 
         Vec3 np = QuadradicBezier(mControlPoints[0], mControlPoints[1], mControlPoints[2], t);
         length += (np - p).Length();
+        p = np;
         steps.push_back(length);
     }
     return length;
@@ -49,28 +50,30 @@ SliceMesh Pipes::GenerateSliceMesh()
     SliceMesh res;
 
     static const size_t segments = 16;
+    const size_t vtsCount = segments * 2;
 
     res.vertices.resize(segments * 2);
     res.indices.resize(segments * 6);
+    
     for (size_t i = 0; i < segments; i++)
     {
         float ng = (PI * 2.f) / float(segments) * float(i);
         float cs = cosf(ng);
         float sn = sinf(ng);
-        res.vertices[i + 0].position = { cs, sn, 0.f };
-        res.vertices[i + 1].position = { cs, sn, 1.f };
+        res.vertices[i * 2 + 0].position = { cs, sn, 0.f };
+        res.vertices[i * 2 + 1].position = { cs, sn, 1.f };
 
-        res.vertices[i + 0].normal = { cs, sn, 0.f };
-        res.vertices[i + 1].normal = { cs, sn, 0.f };
+        res.vertices[i * 2 + 0].normal = { cs, sn, 0.f };
+        res.vertices[i * 2 + 1].normal = { cs, sn, 0.f };
 
         auto& ind = res.indices;
-        ind[i * 6 + 0] = static_cast<uint16_t>(i + 0);
-        ind[i * 6 + 1] = static_cast<uint16_t>(i + 1);
-        ind[i * 6 + 2] = static_cast<uint16_t>(i + 2);
+        ind[i * 6 + 0] = static_cast<uint16_t>(i * 2 + 2) % vtsCount;
+        ind[i * 6 + 1] = static_cast<uint16_t>(i * 2 + 1) % vtsCount;
+        ind[i * 6 + 2] = static_cast<uint16_t>(i * 2 + 0) % vtsCount;
 
-        ind[i * 6 + 3] = static_cast<uint16_t>(i + 1);
-        ind[i * 6 + 4] = static_cast<uint16_t>(i + 2);
-        ind[i * 6 + 5] = static_cast<uint16_t>(i + 3);
+        ind[i * 6 + 3] = static_cast<uint16_t>(i * 2 + 1) % vtsCount;
+        ind[i * 6 + 4] = static_cast<uint16_t>(i * 2 + 2) % vtsCount;
+        ind[i * 6 + 5] = static_cast<uint16_t>(i * 2 + 3) % vtsCount;
     }
 
     return res;
@@ -79,13 +82,15 @@ SliceMesh Pipes::GenerateSliceMesh()
 float GetInterpolatedT(const std::vector<float>& steps, float desiredLength)
 {
     const float stepT = 1.f / float(steps.size());
+    float prevStep = 0.f;
     for(size_t i = 0; i < steps.size(); i++)
     {
         if (steps[i] > desiredLength)
         {
-            float localT = (desiredLength - steps[i - 1]) / (steps[i] - steps[i - 1]);
+            float localT = (desiredLength - prevStep) / (steps[i] - prevStep);
             return (float(i) + localT ) * stepT;
         }
+        prevStep = steps[i];
     }
     return 1.f;
 }
@@ -106,6 +111,7 @@ std::vector<float> Pipes::GetTexture(size_t width) const
         Vec3 pos = QuadradicBezier(pipe.mControlPoints[0], pipe.mControlPoints[1], pipe.mControlPoints[2], t);
         Vec3 dir = QuadradicBezierDfDt(pipe.mControlPoints[0], pipe.mControlPoints[1], pipe.mControlPoints[2], t);
         dir.Normalize();
+
         Vec3 up{0.f, 1.f, 0.f};
         
         res[i * 4 + 0] = pos.x;

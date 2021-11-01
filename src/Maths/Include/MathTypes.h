@@ -37,12 +37,25 @@ template<typename T> T Lerp(T A, T B, float t)
             z = powf(z, 1.f / 2.2f);
             w = powf(w, 1.f / 2.2f);
         }
+        Vec4& operator += (const Vec4& v) { x += v.x; y += v.y; z += v.z; w += v.w; return *this; }
+        Vec4& operator -= (const Vec4& v) { x -= v.x; y -= v.y; z -= v.z; w -= v.w; return *this; }
+        Vec4& operator *= (const float v) { x *= v; y *= v; z *= v; w *= w; return *this; }
+
+        Vec4 operator - (const Vec4& v) const
+        {
+            return { x - v.x, y - v.y, z - v.z, w - v.w };
+        }
+
+        Vec4 operator + (const Vec4& v) const
+        {
+            return { x + v.x, y + v.y, z + v.z, w + v.w };
+        }
     };
 
-    inline Vec4 Lerp(const Vec4& A, const Vec4& B, float t)
+    /*inline Vec4 Lerp(const Vec4& A, const Vec4& B, float t)
     {
         return ::Lerp(A, B, t);
-    }
+    }*/
     struct Vec3
     {
         Vec3() {}
@@ -134,6 +147,11 @@ template<typename T> T Lerp(T A, T B, float t)
     inline Vec3 operator * (const Vec3& a, const float v) 
     { 
         return { a.x * v, a.y * v, a.z * v };
+    }
+
+    inline Vec4 operator * (const Vec4& a, const float v)
+    {
+        return { a.x * v, a.y * v, a.z * v, a.w * v };
     }
 
     inline Vec3 Cross(const Vec3& v1, const Vec3& v2)

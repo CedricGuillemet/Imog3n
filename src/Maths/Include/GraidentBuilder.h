@@ -7,14 +7,14 @@ struct ColorRGBA8
     uint8_t r,g,b,a;
     Vec4 ToVec4() const
     {
-        return {r,g,b,a};
+        return {static_cast<float>(r), static_cast<float>(g), static_cast<float>(b), static_cast<float>(a)};
     }
     void FromVec4(const Vec4& v)
     {
-        r = v.x;
-        g = v.y;
-        b = v.z;
-        a = v.w;
+        r = static_cast<uint8_t>(v.x);
+        g = static_cast<uint8_t>(v.y);
+        b = static_cast<uint8_t>(v.z);
+        a = static_cast<uint8_t>(v.w);
     }
 };
 
@@ -39,6 +39,7 @@ std::vector<ColorRGBA8> Build(const std::vector<GradientEntry>& arr, size_t size
         res.resize(size, arr[0].value);
         return res;
     }
+    res.resize(size);
 
     size_t index = 0;
     for (size_t i = 0; i < arr.size() - 1; i++)
@@ -46,8 +47,8 @@ std::vector<ColorRGBA8> Build(const std::vector<GradientEntry>& arr, size_t size
         auto& arr0 = arr[i];
         auto& arr1 = arr[i + 1];
 
-        size_t start = arr0.key * float(size);
-        size_t end = arr1.key * float(size);
+        size_t start = static_cast<size_t>(arr0.key * float(size));
+        size_t end = static_cast<size_t>(arr1.key * float(size));
         for (; index < start; index++)
         {
             res[index] = arr0.value;
@@ -69,4 +70,5 @@ std::vector<ColorRGBA8> Build(const std::vector<GradientEntry>& arr, size_t size
     {
         res[index] = arr.back().value;
     }
+    return res;
 }
