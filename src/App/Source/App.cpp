@@ -106,10 +106,10 @@ public:
 
 		Pipe* pipe = pipes.NewPipe();
 		PipeConstraint constraints;
-		constraints.start = Mat4x4::TranslationMatrix({ 0.f, 0.f, 0.f });
+		constraints.start = Mat4x4::TranslationMatrix({ 0.f, 10.f, 0.f });
 		constraints.end = Mat4x4::TranslationMatrix({ 0.f, 0.f, 10.f });
 		constraints.radius = 1.f;
-		constraints.controlPoints = { {15.f, 0.f, 5.f} };
+		constraints.controlPoints = { {15.f, -5.f, 5.f} };
 		pipe->Build(constraints);
 
 		static auto sliceMesh = pipes.GenerateSliceMesh();
@@ -139,9 +139,9 @@ public:
 
 		static std::vector<ColorRGBA8> gradient = Build({ 
 			{{0x4F, 0x62, 0x7C, 0x55}, 0.f},
-			{{0x4F, 0x62, 0x7C, 0xFF}, 0.45f},
-			{{0x84, 0x94, 0xAA, 0xFF}, 0.55f},
-			{{0xCF, 0xD6, 0xDF, 0xFF}, 0.85f},
+			{{0x4F, 0x62, 0x7C, 0xFF}, 0.3f},
+			{{0x84, 0x94, 0xAA, 0xFF}, 0.35f},
+			{{0xCF, 0xD6, 0xDF, 0xFF}, 0.6f},
 			{{0xDB, 0xDF, 0xE5, 0xFF}, 1.f},
 			}, 256);
 

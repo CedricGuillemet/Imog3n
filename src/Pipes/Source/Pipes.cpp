@@ -49,7 +49,7 @@ SliceMesh Pipes::GenerateSliceMesh()
 {
     SliceMesh res;
 
-    static const size_t segments = 16;
+    static const size_t segments = 32;
     const size_t vtsCount = segments * 2;
 
     res.vertices.resize(segments * 2);
@@ -103,6 +103,8 @@ std::vector<float> Pipes::GetTexture(size_t width) const
     std::vector<float> steps;
     auto& pipe = mPipes[0];
     float length = pipe.GetLength(100, steps);
+    Vec3 up{ 0.f, 1.f, 0.f };
+
     for (size_t i = 0; i < width; i++)
     {
         float desiredLength = float(i) / float(width) * length;
@@ -112,7 +114,7 @@ std::vector<float> Pipes::GetTexture(size_t width) const
         Vec3 dir = QuadradicBezierDfDt(pipe.mControlPoints[0], pipe.mControlPoints[1], pipe.mControlPoints[2], t);
         dir.Normalize();
 
-        Vec3 up{0.f, 1.f, 0.f};
+        
         
         res[i * 4 + 0] = pos.x;
         res[i * 4 + 1] = pos.y;
@@ -128,6 +130,12 @@ std::vector<float> Pipes::GetTexture(size_t width) const
         res[(i + width * 2) * 4 + 1] = dir.y;
         res[(i + width * 2) * 4 + 2] = dir.z;
         res[(i + width * 2) * 4 + 3] = 0.f;
+
+        Vec3 right;
+        right.Cross(dir, up);
+        right.Normalize();
+        up.Cross(right, dir);
+        up.Normalize();
     }
 
     return res;

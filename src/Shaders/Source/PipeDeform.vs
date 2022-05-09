@@ -21,10 +21,10 @@ void main()
 		vec4( right.xyz, 0.0),
 		vec4( up.xyz, 0.0),
 		vec4( direction.xyz, 0.0),
-		vec4(texPosition.xyz,1.0)));
+		vec4( texPosition.xyz,1.0)));
 
-	vec3 ju = mul(deformMatrix, vec4(a_position.xy, 0., 1.0)).xyz;
+	vec3 worldPosition = mul(deformMatrix, vec4(a_position.xy, 0., 1.0)).xyz;
 	
-	gl_Position = mul(u_viewProjection, vec4(ju.xyz, 1.0));
+	gl_Position = mul(u_viewProjection, vec4(worldPosition.xyz, 1.0));
 	v_normal = mul(deformMatrix, vec4(a_normal, 0.0)).xyz;
 }
